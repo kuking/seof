@@ -55,6 +55,7 @@ File Structure
     - uint64: File size
     - uint32: Disk block size (must eq to the header)
     - uint32: un-encrypted block size
+    - uint64: written blocks (as in number of unique nounces generated)
     - []byte: Further metadata expansion
 
 Syncronisation
@@ -66,10 +67,27 @@ Attack vectors
 - Each time a new block is written, a new nounce is generated, less than 2^32 write operations should be done in one
   particular file (and key.). Internally the implementation uses buffers and will save (and generate a new nounce) only
   when the buffer needs to be flushed to disk (i.e. file closed)
-  but if your application does a lots of random seeks and writes (constantly invalidating the blocks cache) you might
-  hit that upper limit.
+  but if your application does a lots of random seeks and writes (constantly invalidating the blocks cache, forcing
+  flushing blocks to disk, generating new nounces for the new encrypted block) you might hit that upper limit. Block 0
+  holds a counter with the number of unique nounces ever generated (which equals to the number of written blocks).
 
 - The weakest encryption-link is the password string used for generating the 768 bits (96 bytes) of key. A string in
   latin characters should have to be approx. 150 characters in order to hold 768 bits of entropy. You have to keep that
   in mind.
 
+- Blocks within the same file can not be shuffled or moved to another block as the AEAD seal holds its block number as
+  part of its signed plaintext. This is verified.
+
+- Most filesystems can handle [sparse files](https://en.wikipedia.org/wiki/Sparse_file). seof supports sparse files, but
+  read of empty/zeroed blocks is disabled by default to avoid a possible attack (see: XXX flag). User
+  can [`Seek`](https://golang.org/pkg/os/#File.Seek) to any part of the file, write a byte, and later read it. Reading
+  outside the block boundaries of a never written block will fail unless explicitly enabled.
+
+  __Long explanation__: in order to keep track of blocks holding data, seof should keep a write-track-bitmap of
+  previously written blocks. So when a block is read from the disk and comes completely empty (zeroed), but the bitmap
+  says it was written previously, it is fair to assume the data has been lost, therefore deemed inconsistent (or
+  potentially manipulated by a malicious actor.). Without this write-tracking-bitmap, a zeroed block by a malicious
+  actor and an honest empty blob in a sparse file are indistinguishable, potentially allowing a "selective zero-ing
+  attack.". So, unless you
+  
+  
