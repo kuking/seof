@@ -47,8 +47,8 @@ func Test_HappySequentialWriteRead(t *testing.T) {
 	}
 }
 
+// "trivial" test but necessary during the implementation, also maybe a good safety guard to leave around
 func Test_NoPlainTextInDisk(t *testing.T) {
-	// "trivial" test but necessary during the implementation, also maybe a good safety guard to leave around
 	tempFile, _ := ioutil.TempFile(os.TempDir(), "lala")
 	defer os.Remove(tempFile.Name())
 

@@ -5,15 +5,22 @@ import (
 	"crypto/cipher"
 	"encoding/binary"
 	"errors"
+	lru "github.com/hashicorp/golang-lru"
 	"github.com/kuking/seof/crypto"
 	"golang.org/x/crypto/scrypt"
 	"os"
 )
 
 type File struct {
-	file          *os.File
-	diskBlockSize uint32
-	aead          [3]cipher.AEAD
+	file      *os.File
+	blockZero BlockZero
+	aead      [3]cipher.AEAD
+	cache     *lru.Cache
+	cursor    uint64
+}
+
+type intBlock struct {
+	plaintext []byte
 }
 
 func (f *File) initialiseCiphers(password string, header *Header) error {
@@ -39,6 +46,44 @@ func (f *File) initialiseCiphers(password string, header *Header) error {
 		}
 	}
 	return nil
+}
+
+func (f *File) initialiseCache(size int) error {
+	var err error
+	f.cache, err = lru.NewWithEvict(size, f.flushBlock)
+	return err
+}
+
+func (f *File) flushBlock(blockI interface{}, dataI interface{}) {
+	//block := blockI.(uint64)
+	//data := dataI.([]byte)
+
+}
+
+func (f *File) seal(plainText []byte, blockNo uint64) (cipherText []byte, nonce []byte) {
+	additional := make([]byte, 8)
+	binary.LittleEndian.PutUint64(additional, blockNo)
+	nonce = crypto.RandBytes(36)
+	cipherText = f.aead[0].Seal(nil, nonce[0:12], plainText, additional)
+	cipherText = f.aead[1].Seal(nil, nonce[12:24], cipherText, additional)
+	cipherText = f.aead[2].Seal(nil, nonce[24:36], cipherText, additional)
+	return
+}
+
+func (f *File) open(cipherText []byte, blockNo uint64, nonce []byte) (plainText []byte, err error) {
+	additional := make([]byte, 8)
+	binary.LittleEndian.PutUint64(additional, blockNo)
+	// 3
+	cipherText, err = f.aead[2].Open(nil, nonce[24:36], cipherText, additional)
+	if err != nil {
+		return
+	}
+	cipherText, err = f.aead[1].Open(nil, nonce[12:24], cipherText, additional)
+	if err != nil {
+		return
+	}
+	plainText, err = f.aead[0].Open(nil, nonce[0:12], cipherText, additional)
+	return
 }
 
 func Create(name string) (*File, error) {
