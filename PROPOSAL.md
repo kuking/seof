@@ -49,14 +49,14 @@ File Structure
     - uint32 Disk block size
     - [8]byte zeros (verified on open)
 - A block:
-    - [96]byte: nounce
+    - [36]byte: nonce
     - [disk-block-size]byte: CGM stream
         - the additional data for the AEAD is an uint64 holding the block number (verified)
 - Special block 0:
     - uint64: File size
     - uint32: Disk block size (must eq to the header)
     - uint32: un-encrypted block size
-    - uint64: written blocks (as in number of unique nounces generated)
+    - uint64: written blocks (as in number of unique nonces generated)
     - []byte: Further metadata expansion
 
 Syncronisation
@@ -65,12 +65,12 @@ Syncronisation
 Attack vectors
 --------------
 
-- Each time a new block is written, a new nounce is generated, less than 2^32 write operations should be done in one
-  particular file (and key.). Internally the implementation uses buffers and will save (and generate a new nounce) only
+- Each time a new block is written, a new nonce is generated, less than 2^32 write operations should be done in one
+  particular file (and key.). Internally the implementation uses buffers and will save (and generate a new nonce) only
   when the buffer needs to be flushed to disk (i.e. file closed, explicit sync or while flushing a modified buffer.)
   if your application does a lots of random seeks and writes (constantly invalidating the blocks cache, forcing flushing
-  blocks to disk, generating new nounces for the new encrypted block) you might hit that upper limit. Block 0 holds a
-  counter with the number of unique nounces ever generated (which equals to the number of written and encrypted blocks).
+  blocks to disk, generating new nonces for the new encrypted block) you might hit that upper limit. Block 0 holds a
+  counter with the number of unique nonces ever generated (which equals to the number of written and encrypted blocks).
 
 - The weakest encryption-link is the password string used for generating the 768 bits (96 bytes) of key. A string in
   latin characters should have to be approx. 150 characters in order to hold 768 bits of entropy. You have to keep that
