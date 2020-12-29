@@ -80,9 +80,10 @@ Attack vectors
   part of its signed plaintext. This is verified.
 
 - Most filesystems can handle [sparse files](https://en.wikipedia.org/wiki/Sparse_file). seof supports sparse files, but
-  read of empty/zeroed blocks is disabled by default to avoid a possible attack (see: XXX flag). User create a new file
-  and [`Seek`](https://golang.org/pkg/os/#File.Seek) to any part of the file, write a byte, and later read it. Reading
-  outside the block boundaries of the unique written byte will fail unless explicitly enabled.
+  read of never written/zeroed blocks is disabled by default to avoid a possible attack (see: XXX flag). User can create
+  a new file and [`Seek`](https://golang.org/pkg/os/#File.Seek) to any part of it, write a byte, and later read it.
+  Reading outside the block boundaries of the unique written byte will fail unless explicitly enabled. This is not a
+  very typical user case.
 
   __Long explanation__: in order to keep track of blocks holding data, seof should keep a block-written-bitmap. So when
   a block is read from the disk and comes completely empty (zeroed, no AEAD seal present), but the block-written-bitmap
@@ -90,4 +91,6 @@ Attack vectors
   error should be raised (it could have been zeroed by a malicious actor, too.). Without this block-written-bitmap, a
   zeroed block by a malicious actor and an honest empty blob in a sparse file are indistinguishable, potentially
   allowing a "selective block zero-ing attack." and failing the integrity assurances.
+
+  If you really need this assurance, let me know, the block-written-bitmap can be done.
    
