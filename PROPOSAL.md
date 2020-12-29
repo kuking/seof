@@ -13,6 +13,7 @@ i.e. [`Read`](https://golang.org/pkg/os/#File.Read),
 It derives a file-wide key using scrypt with a provided string password, the file is sliced into blocks of n bytes (10k
 by default, decided at creation time.). Each block is encrypted and sealed using three AES256/CGM envelops, one inside
 the other, achieving both [confidentiality and authenticity](https://en.wikipedia.org/wiki/Authenticated_encryption).
+File wide integrity is warrantied by signing blocks and avoiding empty sparse blocks.
 
 
 Performance
@@ -22,12 +23,12 @@ the usual good practices predicates. Performance can not be expected to be as a 
 filesystem. There is no performance degradation beyond the extra work done by the encryption primitives plus the extra
 ciphertext size.
 
-Internally, `seof` holds multiple unencrypted blocks in memory, unbuffered reading and writting should not inccur in any
-extra encryption work, and the typical sequential reads and writes should be performant (and will not incurr in
+Internally, `seof` holds multiple unencrypted blocks in memory, unbuffered reading and writing should not incur in any
+extra encryption work, and the typical sequential reads and writes should be performant (and will not incur in
 unnecessary encryption work or disk-input-output.). Because there is a limited number of blocks in memory at a time,
 random reads and writes outside the current buffers, will eventually trigger encryption primitives and
 disk-input-output (i.e. if a buffer content was modified, it will have to be encrypted and saved to disk, so it can be
-released from memory to make space for reading another block, unencrypting it.)
+released from memory to make space for reading another block, having to decrypt it first.)
 
 Multiple random seek/read/write operations in a long enough file, will incur in performance penalisation as each time a
 new block comes into memory from the disk, it has to be read and unencrypted, and then disposed from memory, possibly
@@ -66,10 +67,10 @@ Attack vectors
 
 - Each time a new block is written, a new nounce is generated, less than 2^32 write operations should be done in one
   particular file (and key.). Internally the implementation uses buffers and will save (and generate a new nounce) only
-  when the buffer needs to be flushed to disk (i.e. file closed)
-  but if your application does a lots of random seeks and writes (constantly invalidating the blocks cache, forcing
-  flushing blocks to disk, generating new nounces for the new encrypted block) you might hit that upper limit. Block 0
-  holds a counter with the number of unique nounces ever generated (which equals to the number of written blocks).
+  when the buffer needs to be flushed to disk (i.e. file closed, explicit sync or while flushing a modified buffer.)
+  if your application does a lots of random seeks and writes (constantly invalidating the blocks cache, forcing flushing
+  blocks to disk, generating new nounces for the new encrypted block) you might hit that upper limit. Block 0 holds a
+  counter with the number of unique nounces ever generated (which equals to the number of written and encrypted blocks).
 
 - The weakest encryption-link is the password string used for generating the 768 bits (96 bytes) of key. A string in
   latin characters should have to be approx. 150 characters in order to hold 768 bits of entropy. You have to keep that
@@ -79,15 +80,14 @@ Attack vectors
   part of its signed plaintext. This is verified.
 
 - Most filesystems can handle [sparse files](https://en.wikipedia.org/wiki/Sparse_file). seof supports sparse files, but
-  read of empty/zeroed blocks is disabled by default to avoid a possible attack (see: XXX flag). User
-  can [`Seek`](https://golang.org/pkg/os/#File.Seek) to any part of the file, write a byte, and later read it. Reading
-  outside the block boundaries of a never written block will fail unless explicitly enabled.
+  read of empty/zeroed blocks is disabled by default to avoid a possible attack (see: XXX flag). User create a new file
+  and [`Seek`](https://golang.org/pkg/os/#File.Seek) to any part of the file, write a byte, and later read it. Reading
+  outside the block boundaries of the unique written byte will fail unless explicitly enabled.
 
-  __Long explanation__: in order to keep track of blocks holding data, seof should keep a write-track-bitmap of
-  previously written blocks. So when a block is read from the disk and comes completely empty (zeroed), but the bitmap
-  says it was written previously, it is fair to assume the data has been lost, therefore deemed inconsistent (or
-  potentially manipulated by a malicious actor.). Without this write-tracking-bitmap, a zeroed block by a malicious
-  actor and an honest empty blob in a sparse file are indistinguishable, potentially allowing a "selective zero-ing
-  attack.". So, unless you
-  
-  
+  __Long explanation__: in order to keep track of blocks holding data, seof should keep a block-written-bitmap. So when
+  a block is read from the disk and comes completely empty (zeroed, no AEAD seal present), but the block-written-bitmap
+  accuses it was written previously, it is fair to assume the data has been lost, therefore deemed inconsistent, an IO
+  error should be raised (it could have been zeroed by a malicious actor, too.). Without this block-written-bitmap, a
+  zeroed block by a malicious actor and an honest empty blob in a sparse file are indistinguishable, potentially
+  allowing a "selective block zero-ing attack." and failing the integrity assurances.
+   

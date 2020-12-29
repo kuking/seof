@@ -57,4 +57,5 @@ type BlockZero struct {
 	BEncFileSize  uint64 //BEnc as 'Before Encryption'
 	BEncBlockSize uint32
 	DiskBlockSize uint32
+	BlocksWritten uint64
 }
