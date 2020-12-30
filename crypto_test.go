@@ -40,7 +40,7 @@ func TestSealOpen_Sizes(t *testing.T) {
 	plainText := "This is a secret"
 	cipherText, nonce := f.seal([]byte(plainText), 1234)
 
-	if len(nonce) != 36 {
+	if len(nonce) != 36 || len(nonce) != nonceSize {
 		t.Fatal("nonce has to be 12*3 bytes")
 	}
 	if float32(len(plainText))*1.5 > float32(len(cipherText)) {

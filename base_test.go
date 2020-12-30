@@ -39,7 +39,7 @@ func Test_HappySequentialWriteRead(t *testing.T) {
 	if n != len(data) {
 		t.Fatal("It did not read fully")
 	}
-	if !bytes.Equal(data, readBuf[:n]) {
+	if !bytes.Equal(data, readBuf[0:n]) {
 		t.Fatal("What was read was not correct what was initially written")
 	}
 	if err = f.Close(); err != nil {

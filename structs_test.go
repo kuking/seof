@@ -23,7 +23,7 @@ func TestHeaderStruct(t *testing.T) {
 	if binary.Write(p, binary.LittleEndian, &h) != nil {
 		t.Fatal()
 	}
-	if p.Len() != 128 {
+	if p.Len() != 128 || p.Len() != HeaderLength {
 		t.Fatal("header should be 128 bytes")
 	}
 }
@@ -92,7 +92,7 @@ func TestHeader_ScriptParams(t *testing.T) {
 
 func TestHeader_DiskBlockSize(t *testing.T) {
 	h := givenValidHeader()
-	h.DiskBlockSize = 1499
+	h.DiskBlockSize = 1111
 	if h.Verify() == nil {
 		t.Fatal("disk block size should be at least 1500 bytes")
 	}
@@ -108,6 +108,29 @@ func TestHeader_TailOfZeros(t *testing.T) {
 	if h.Verify() == nil {
 		t.Fatal("tailOfZeros should be all zeroes")
 	}
+}
+
+func TestBlockZero_Serialising(t *testing.T) {
+	bz := BlockZero{
+		BEncBlockSize: 1,
+		DiskBlockSize: 2,
+		BEncFileSize:  3,
+		BlocksWritten: 4,
+	}
+	bz2, err := BlockZeroFromBytes(bz.Bytes())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bz2 == nil {
+		t.Fatal()
+	}
+	if bz != *bz2 {
+		t.Fatal()
+	}
+	if len(bz.Bytes()) != 4+4+8+8 {
+		t.Fatal()
+	}
+
 }
 
 func givenValidHeader() Header {
