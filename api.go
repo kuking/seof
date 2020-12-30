@@ -108,7 +108,7 @@ func (f *File) flushBlock(blockI interface{}, dataI interface{}) {
 }
 
 func (f *File) flushBlockZero() {
-	f.flushBlock(uint64(0), &inMemoryBlock{
+	f.flushBlock(int64(0), &inMemoryBlock{
 		modified:  true,
 		plainText: f.blockZero.Bytes(),
 	})
@@ -377,6 +377,9 @@ func (f *File) Read(b []byte) (n int, err error) {
 	if f.pendingErr != nil {
 		return 0, *f.pendingErr
 	}
+	if f.cursor >= int64(f.blockZero.BEncFileSize) {
+		return 0, io.EOF
+	}
 	blockNo := f.blockNoForCursor()
 	imb, err := f.getOrLoadBlock(blockNo)
 	if err != nil {
@@ -415,9 +418,9 @@ func (f *File) ReadAt(b []byte, off int64) (n int, err error) {
 	return f.Read(b)
 }
 
-func (f *File) ReadFrom(r io.Reader) (n int64, err error) {
-	panic("i dunno")
-}
+//func (f *File) ReadFrom(r io.Reader) (n int64, err error) {
+//	panic("i dunno")
+//}
 
 func (f *File) Seek(offset int64, whence int) (ret int64, err error) {
 	newCursor := int64(0)
@@ -460,6 +463,7 @@ func (f *File) Truncate(size int64) error {
 
 func (f *File) Close() error {
 	f.cache.Purge()
+	f.flushBlockZero()
 
 	return f.file.Close()
 }
