@@ -1,5 +1,7 @@
 # go seof: Simple Encrypted os.File
 
+TL/DR STATUS: It works; missing: Truncate, utilities and more testing, release, etc.
+
 Complete implementation and drop-in replacement of golang' [`os.File`](https://golang.org/pkg/os/#File) encrypting the
 underlying file with 768 bits of encryption (Triple AES256 -yes- very silly and very secure). The resulting type can be
 used anywhere an [`os.File`](https://golang.org/pkg/os/#File) would be used. i.e. it can be both sequentially and
@@ -50,6 +52,7 @@ File Structure
     - [8]byte zeros (verified on open)
 - A block:
     - [36]byte: nonce
+    - uint32: cipherText length
     - [disk-block-size]byte: CGM stream
         - the additional data for the AEAD is an uint64 holding the block number (verified)
 - Special block 0:

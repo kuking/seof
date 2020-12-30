@@ -8,6 +8,7 @@ import (
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/kuking/seof/crypto"
 	"golang.org/x/crypto/scrypt"
+	"io"
 	"os"
 )
 
@@ -19,7 +20,7 @@ type File struct {
 	blockZero  BlockZero
 	aead       [3]cipher.AEAD
 	cache      *lru.Cache
-	cursor     uint64
+	cursor     int64
 }
 
 type inMemoryBlock struct {
@@ -59,13 +60,13 @@ func (f *File) initialiseCache(size int) error {
 }
 
 func (f *File) flushBlock(blockI interface{}, dataI interface{}) {
-	blockNo := blockI.(uint64)
+	blockNo := blockI.(int64)
 	imb := dataI.(*inMemoryBlock)
 	if !imb.modified {
 		return
 	}
 
-	blockOffset := int64(HeaderLength) + int64(f.blockZero.DiskBlockSize)*int64(blockNo)
+	blockOffset := int64(HeaderLength) + int64(f.blockZero.DiskBlockSize)*blockNo
 	newOfs, err := f.file.Seek(blockOffset, 0)
 	if newOfs != blockOffset {
 		err := errors.New("failed to fseek")
@@ -77,7 +78,7 @@ func (f *File) flushBlock(blockI interface{}, dataI interface{}) {
 		return
 	}
 
-	cipherText, nonce := f.seal(imb.plainText, blockNo)
+	cipherText, nonce := f.seal(imb.plainText, uint64(blockNo))
 	n, err := f.file.Write(nonce)
 	if err != nil {
 		f.pendingErr = &err
@@ -106,13 +107,20 @@ func (f *File) flushBlock(blockI interface{}, dataI interface{}) {
 	f.blockZero.BlocksWritten++
 }
 
-func (f *File) getOrLoadBlock(blockNo uint64) (*inMemoryBlock, error) {
+func (f *File) flushBlockZero() {
+	f.flushBlock(uint64(0), &inMemoryBlock{
+		modified:  true,
+		plainText: f.blockZero.Bytes(),
+	})
+}
+
+func (f *File) getOrLoadBlock(blockNo int64) (*inMemoryBlock, error) {
 
 	if imb, ok := f.cache.Get(blockNo); ok {
 		return imb.(*inMemoryBlock), nil
 	}
 
-	blockOffset := int64(HeaderLength) + int64(f.blockZero.DiskBlockSize)*int64(blockNo)
+	blockOffset := int64(HeaderLength) + int64(f.blockZero.DiskBlockSize)*blockNo
 	f.file.Seek(blockOffset, 0)
 
 	nonce := make([]byte, nonceSize)
@@ -138,7 +146,7 @@ func (f *File) getOrLoadBlock(blockNo uint64) (*inMemoryBlock, error) {
 		return nil, err
 	}
 
-	plainText, err := f.open(cipherText, blockNo, nonce)
+	plainText, err := f.open(cipherText, uint64(blockNo), nonce)
 	if err != nil {
 		return nil, err
 	}
@@ -293,13 +301,13 @@ func CreateExt(name string, password string, BEBlockSize int, memoryBuffers int)
 		modified:  true,
 		plainText: file.blockZero.Bytes(),
 	}
-	file.flushBlock(uint64(0), &imb)
+	file.flushBlock(int64(0), &imb)
 
 	return &file, nil
 }
 
-func (f *File) blockNoForCursor() uint64 {
-	block := f.cursor / uint64(f.blockZero.BEncBlockSize)
+func (f *File) blockNoForCursor() int64 {
+	block := f.cursor / int64(f.blockZero.BEncBlockSize)
 	return block + 1 // because block zero is special, so everything is offset +1
 }
 
@@ -312,7 +320,7 @@ func (f *File) Write(b []byte) (n int, err error) {
 	}
 	blockNo := f.blockNoForCursor()
 	imb, err := f.getOrLoadBlock(blockNo)
-	if err != nil && f.cursor >= f.blockZero.BEncFileSize {
+	if err != nil && uint64(f.cursor) >= f.blockZero.BEncFileSize {
 		// at the tail of the file, a new block is created
 		newImb := inMemoryBlock{
 			modified:  false,
@@ -323,28 +331,46 @@ func (f *File) Write(b []byte) (n int, err error) {
 	}
 
 	imb.modified = true
-	// appends zeroes if not in the block
-	ofsStart := int(f.cursor % uint64(f.blockZero.BEncBlockSize))
-	if len(imb.plainText) < ofsStart {
-		for i := len(imb.plainText); i < ofsStart; i++ {
-			imb.plainText = append(imb.plainText, 0)
-		}
+	// appends zeroes if not intend to write at the beginning of the block, and the block is empty
+	ofsStart := int(f.cursor % int64(f.blockZero.BEncBlockSize))
+	for i := len(imb.plainText); i < ofsStart; i++ {
+		imb.plainText = append(imb.plainText, 0)
 	}
-	// then fully write or partial
+
 	if len(b) < ofsStart+int(f.blockZero.BEncBlockSize) {
+		// partial block write
 		for i := len(imb.plainText); i < ofsStart+len(b); i++ {
 			imb.plainText = append(imb.plainText, 0)
 		}
 		copy(imb.plainText[ofsStart:], b)
-		f.cursor += uint64(len(b))
+		f.cursor += int64(len(b))
+		if uint64(f.cursor) > f.blockZero.BEncFileSize {
+			f.blockZero.BEncFileSize = uint64(f.cursor)
+		}
 		return len(b), nil
 	} else {
+		// whole block write
 		partial := int(f.blockZero.BEncBlockSize) - ofsStart
 		imb.plainText = append(imb.plainText[0:ofsStart], b[0:partial]...)
-		f.cursor += uint64(partial)
+		f.cursor += int64(partial)
+		if uint64(f.cursor) > f.blockZero.BEncFileSize {
+			f.blockZero.BEncFileSize = uint64(f.cursor)
+		}
 		n, err := f.Write(b[partial:])
 		return partial + n, err
 	}
+}
+
+func (f *File) WriteAt(b []byte, off int64) (n int, err error) {
+	if off < 0 { //XXX: can this be relative?
+		return 0, errors.New("negative offset not allowed")
+	}
+	f.cursor = off
+	return f.Write(b)
+}
+
+func (f *File) WriteString(s string) (n int, err error) {
+	return f.Write([]byte(s))
 }
 
 func (f *File) Read(b []byte) (n int, err error) {
@@ -356,36 +382,84 @@ func (f *File) Read(b []byte) (n int, err error) {
 	if err != nil {
 		return 0, err
 	}
-	ofsStart := int(f.cursor % uint64(f.blockZero.BEncBlockSize))
+	ofsStart := int(f.cursor % int64(f.blockZero.BEncBlockSize))
 
 	if len(imb.plainText) != int(f.blockZero.BEncBlockSize) {
 		// at end of file, we read what we can --- or end of block-ish //XXX: potential bug here
 		copy(b[:], imb.plainText[ofsStart:])
 		n := len(imb.plainText) - ofsStart
-		f.cursor += uint64(n)
+		f.cursor += int64(n)
 		return n, nil
 	}
 
 	if len(b) < len(imb.plainText)-ofsStart {
 		// smaller chunk
 		copy(b[:], imb.plainText[ofsStart:])
-		f.cursor += uint64(len(b))
+		f.cursor += int64(len(b))
 		return len(b), nil
 	}
 
 	// bigger chunk
 	partial := int(f.blockZero.BEncBlockSize) - ofsStart
 	copy(b[:], imb.plainText[ofsStart:])
-	f.cursor += uint64(partial)
+	f.cursor += int64(partial)
 	n, err = f.Read(b[partial:])
 	return n + partial, err
 }
 
+func (f *File) ReadAt(b []byte, off int64) (n int, err error) {
+	if off < 0 { //XXX: can this be relative?
+		return 0, errors.New("negative offset not allowed")
+	}
+	f.cursor = off
+	return f.Read(b)
+}
+
+func (f *File) ReadFrom(r io.Reader) (n int64, err error) {
+	panic("i dunno")
+}
+
+func (f *File) Seek(offset int64, whence int) (ret int64, err error) {
+	newCursor := int64(0)
+	if whence == 0 {
+		if offset < 0 { //XXX: can this be relative?
+			return 0, errors.New("negative offset not allowed")
+		}
+		newCursor = offset
+	} else if whence == 1 {
+		newCursor = f.cursor + offset
+	} else if whence == 2 {
+		newCursor = int64(f.blockZero.BEncFileSize) - offset
+	} else {
+		return 0, errors.New("invalid whence value")
+	}
+	if newCursor < 0 {
+		return 0, errors.New("absolute negative offset position not allowed")
+	}
+	if newCursor > int64(f.blockZero.BEncFileSize) {
+		newCursor = int64(f.blockZero.BEncFileSize)
+	}
+	f.cursor = newCursor
+	return f.cursor, nil
+}
+
+func (f *File) Sync() {
+	for _, blockNoI := range f.cache.Keys() {
+		imbI, ok := f.cache.Get(blockNoI)
+		if ok {
+			f.flushBlock(blockNoI, imbI)
+		}
+	}
+	f.flushBlockZero()
+	f.file.Sync()
+}
+
+func (f *File) Truncate(size int64) error {
+	return errors.New("not implemented")
+}
+
 func (f *File) Close() error {
 	f.cache.Purge()
-	f.flushBlock(uint64(0), &inMemoryBlock{
-		modified:  true,
-		plainText: f.blockZero.Bytes(),
-	})
+
 	return f.file.Close()
 }
