@@ -12,7 +12,7 @@ func TestSealOpen(t *testing.T) {
 
 	plainText := "This is a secret"
 	cipherText, nonce := f.seal([]byte(plainText), 1234)
-	recoveredText, err := f.open(cipherText, 1234, nonce)
+	recoveredText, err := f.unseal(cipherText, 1234, nonce)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -27,7 +27,7 @@ func TestSealOpen_InvalidBlockNo(t *testing.T) {
 	f.initialiseCiphers(password, &h)
 	plainText := "This is a secret"
 	cipherText, nonce := f.seal([]byte(plainText), 1234)
-	_, err := f.open(cipherText, 5432, nonce)
+	_, err := f.unseal(cipherText, 5432, nonce)
 	if err == nil {
 		t.Fatal(err)
 	}
@@ -63,7 +63,7 @@ func TestSealOpen_AnyByteChangeShouldFail(t *testing.T) {
 		if cipherText[i] == orig {
 			cipherText[i]++
 		}
-		_, err := f.open(cipherText, 1234, nonce)
+		_, err := f.unseal(cipherText, 1234, nonce)
 		if err == nil {
 			t.Fatal("this should have failed after changing one byte in the cipherText")
 		}
@@ -76,7 +76,7 @@ func TestSealOpen_AnyByteChangeShouldFail(t *testing.T) {
 		if nonce[i] == orig {
 			nonce[i]++
 		}
-		_, err := f.open(cipherText, 1234, nonce)
+		_, err := f.unseal(cipherText, 1234, nonce)
 		if err == nil {
 			t.Fatal("this should have failed after changing one byte in the cipherText")
 		}

@@ -5,6 +5,7 @@ import (
 	"crypto/cipher"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/kuking/seof/crypto"
 	"golang.org/x/crypto/scrypt"
@@ -78,7 +79,14 @@ func (f *File) flushBlock(blockI interface{}, dataI interface{}) {
 		return
 	}
 
+	if len(imb.plainText) > int(f.blockZero.BEncBlockSize) {
+		panic(fmt.Sprintf("block %v plainText too big: %v > %v\n", blockNo, len(imb.plainText), int(f.blockZero.BEncBlockSize)))
+	}
+
 	cipherText, nonce := f.seal(imb.plainText, uint64(blockNo))
+	if len(cipherText) > int(f.blockZero.DiskBlockSize) {
+		panic(fmt.Sprintf("cipherText encoded size too big: %v > %v\n", len(cipherText), f.blockZero.DiskBlockSize))
+	}
 	n, err := f.file.Write(nonce)
 	if err != nil {
 		f.pendingErr = &err
@@ -146,7 +154,7 @@ func (f *File) getOrLoadBlock(blockNo int64) (*inMemoryBlock, error) {
 		return nil, err
 	}
 
-	plainText, err := f.open(cipherText, uint64(blockNo), nonce)
+	plainText, err := f.unseal(cipherText, uint64(blockNo), nonce)
 	if err != nil {
 		return nil, err
 	}
@@ -170,7 +178,7 @@ func (f *File) seal(plainText []byte, blockNo uint64) (cipherText []byte, nonce 
 	return
 }
 
-func (f *File) open(cipherText []byte, blockNo uint64, nonce []byte) (plainText []byte, err error) {
+func (f *File) unseal(cipherText []byte, blockNo uint64, nonce []byte) (plainText []byte, err error) {
 	additional := make([]byte, 8)
 	binary.LittleEndian.PutUint64(additional, blockNo)
 	// 3
@@ -319,8 +327,8 @@ func (f *File) Write(b []byte) (n int, err error) {
 		return 0, nil
 	}
 	blockNo := f.blockNoForCursor()
-	imb, err := f.getOrLoadBlock(blockNo)
-	if err != nil && uint64(f.cursor) >= f.blockZero.BEncFileSize {
+	var imb *inMemoryBlock
+	if uint64(f.cursor) >= f.blockZero.BEncFileSize {
 		// at the tail of the file, a new block is created
 		newImb := inMemoryBlock{
 			modified:  false,
@@ -328,8 +336,12 @@ func (f *File) Write(b []byte) (n int, err error) {
 		}
 		imb = &newImb
 		f.cache.Add(blockNo, imb)
+	} else {
+		imb, err = f.getOrLoadBlock(blockNo)
+		if err != nil {
+			return 0, err
+		}
 	}
-
 	imb.modified = true
 	// appends zeroes if not intend to write at the beginning of the block, and the block is empty
 	ofsStart := int(f.cursor % int64(f.blockZero.BEncBlockSize))
@@ -466,4 +478,8 @@ func (f *File) Close() error {
 	f.flushBlockZero()
 
 	return f.file.Close()
+}
+
+func (f *File) Name() string {
+	return f.file.Name()
 }
