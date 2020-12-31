@@ -12,7 +12,6 @@ import (
 
 var password = "e924a81d0abd80b4c2ded664c7881a75575d9e45"
 
-//var wholeSize = 1024 * 1024 * 1024
 var wholeSize = 256 * 1024 * 1024
 var seofBlockSize = 1024
 
@@ -56,7 +55,7 @@ func main() {
 	}
 
 	for i, bs := range misalignedBlockSizes {
-		fmt.Printf("4.%v.1. Rewriting using chunk_size=%v\n", i+1, bs)
+		fmt.Printf("4.%v.1. Rewriting wholy using chunk_size=%v\n", i+1, bs)
 		writeFullyUsingChunkSize(bs)
 		fmt.Printf("4.%v.2. Verifying (fast, using chunk_size=%v)\n", i+1, seofBlockSize)
 		fullyCompare(seofBlockSize)
@@ -66,6 +65,9 @@ func main() {
 	writeRandomChunks(wholeSize/1024, seofBlockSize*2)
 	fmt.Printf("5.2. Verifying (fast, using chunk_size=%v)\n", seofBlockSize)
 	fullyCompare(seofBlockSize)
+
+	fmt.Printf("6.1. Reading %v random chunks of miscelaneous sizes of up to %v bytes\n", wholeSize/1024, seofBlockSize*2)
+	readingRandomChunks(wholeSize/1024, seofBlockSize*2)
 
 	fmt.Println("\nSUCCESS!")
 	_ = nat.Close()
@@ -151,7 +153,6 @@ func writeFullyUsingChunkSize(cs int) {
 }
 
 func writeRandomChunks(chunks int, maxSize int) {
-
 	lastDot := 0
 	for chunk := 0; chunk < chunks; chunk++ {
 
@@ -193,7 +194,43 @@ func writeRandomChunks(chunks int, maxSize int) {
 		}
 	}
 	fmt.Println(" done")
+}
 
+func readingRandomChunks(chunks int, maxSize int) {
+	lastDot := 0
+	for chunk := 0; chunk < chunks; chunk++ {
+
+		size := rand.Int() % maxSize
+		nb := make([]byte, size)
+		mb := make([]byte, size)
+		ofs := int64(rand.Int() % (wholeSize - len(nb)))
+
+		n, err := nat.ReadAt(nb, ofs)
+		assertErr(err, "reading native file")
+
+		m, err := enc.ReadAt(mb, ofs)
+		assertErr(err, "reding encrypted file")
+		if n != m || n != len(nb) || m != len(mb) {
+			fmt.Printf(
+				"\nERROR: It did not read the expected quantity, read native=%v, seof=%v, expected=%v, ofs=%v\n",
+				n, m, len(nb), ofs)
+			os.Exit(-1)
+		}
+
+		if !bytes.Equal(nb, mb) {
+			fmt.Println("ERROR: Files are not equal.")
+			fmt.Println("native:", hex.EncodeToString(nb))
+			fmt.Println("  seof:", hex.EncodeToString(mb))
+			os.Exit(-1)
+		}
+
+		if lastDot < chunk/(chunks/50) {
+			_, _ = os.Stdout.WriteString(".")
+			_ = os.Stdout.Sync()
+			lastDot = chunk / (chunks / 50)
+		}
+	}
+	fmt.Println(" done")
 }
 
 func assertWritten(n, exp int) {
