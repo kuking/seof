@@ -84,9 +84,9 @@ func Test_ChunkedBigWrite(t *testing.T) {
 		t.Fatal("It did not read fully")
 	}
 	for i := 0; i < 20; i++ {
-		if !bytes.Equal(data, readBuf[i+256:(i+1)*256]) {
+		if !bytes.Equal(data, readBuf[i*256:(i+1)*256]) {
 			fmt.Println("BLK:", i, "EXP:", hex.EncodeToString(data))
-			fmt.Println("BLK:", i, "GOT:", hex.EncodeToString(readBuf[i+256:(i+1)*256]))
+			fmt.Println("BLK:", i, "GOT:", hex.EncodeToString(readBuf[i*256:(i+1)*256]))
 			t.Fatal("What was read was not correct what was initially written at chunk", i)
 		}
 	}
@@ -161,7 +161,7 @@ func Test_ClosingAnErroredSoefIsOK(t *testing.T) {
 	assertNoErr(err, t)
 	b := make([]byte, 128)
 	_, err = f.Read(b)
-	if err == nil || err.Error() != "could not read nonce bytes" {
+	if err == nil {
 		t.Fatal()
 	}
 

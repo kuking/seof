@@ -139,6 +139,9 @@ func (f *File) getOrLoadBlock(blockNo int64) (*inMemoryBlock, error) {
 
 	nonce := make([]byte, nonceSize)
 	n, err := f.file.Read(nonce)
+	if err == io.EOF { // to help detection of EOF (so new blocks can be created.)
+		return nil, err
+	}
 	if n != nonceSize {
 		return nil, errors.New("could not read nonce bytes")
 	}
@@ -340,7 +343,9 @@ func (f *File) Write(b []byte) (n int, err error) {
 	}
 	blockNo := f.blockNoForCursor()
 	var imb *inMemoryBlock
-	if uint64(f.cursor) >= f.blockZero.BEncFileSize {
+	imb, err = f.getOrLoadBlock(blockNo)
+
+	if err != nil && err == io.EOF {
 		// at the tail of the file, a new block is created
 		newImb := inMemoryBlock{
 			modified:  false,
@@ -348,12 +353,10 @@ func (f *File) Write(b []byte) (n int, err error) {
 		}
 		imb = &newImb
 		f.cache.Add(blockNo, imb)
-	} else {
-		imb, err = f.getOrLoadBlock(blockNo)
-		if err != nil {
-			return 0, err
-		}
+	} else if err != nil {
+		return 0, err
 	}
+
 	imb.modified = true
 	// appends zeroes if not intend to write at the beginning of the block, and the block is empty
 	ofsStart := int(f.cursor % int64(f.blockZero.BEncBlockSize))
