@@ -1,5 +1,10 @@
 
-file.seof
-seof
+*.soak
+*.seof
+
+/soaktest
+/seof
+
 coverage.out
 .idea/
+
