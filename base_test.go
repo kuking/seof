@@ -12,7 +12,8 @@ import (
 
 func Test_HappySequentialWriteRead(t *testing.T) {
 	tempFile, _ := ioutil.TempFile(os.TempDir(), "lala")
-	defer os.Remove(tempFile.Name())
+	defer deferredCleanup(tempFile)
+
 	data := crypto.RandBytes(BEBlockSize*3 + BEBlockSize/3)
 
 	// create, write, close.
@@ -37,14 +38,14 @@ func Test_HappySequentialWriteRead(t *testing.T) {
 	if !bytes.Equal(data, readBuf[0:n]) {
 		t.Fatal("What was read was not correct what was initially written")
 	}
-	f.Close()
+	err = f.Close()
 	assertNoErr(err, t)
 }
 
 // "trivial" test but necessary during the implementation, also maybe a good safety guard to leave around
 func Test_NoPlainTextInDisk(t *testing.T) {
 	tempFile, _ := ioutil.TempFile(os.TempDir(), "lala")
-	defer os.Remove(tempFile.Name())
+	defer deferredCleanup(tempFile)
 
 	data := crypto.RandBytes(128)
 	f, _ := CreateExt(tempFile.Name(), password, BEBlockSize, 1)
@@ -62,7 +63,8 @@ func Test_NoPlainTextInDisk(t *testing.T) {
 
 func Test_ChunkedBigWrite(t *testing.T) {
 	tempFile, _ := ioutil.TempFile(os.TempDir(), "lala")
-	defer os.Remove(tempFile.Name())
+	defer deferredCleanup(tempFile)
+
 	data := crypto.RandBytes(256)
 
 	// create, write, close.
@@ -88,13 +90,13 @@ func Test_ChunkedBigWrite(t *testing.T) {
 			t.Fatal("What was read was not correct what was initially written at chunk", i)
 		}
 	}
-	f.Close()
+	err = f.Close()
 	assertNoErr(err, t)
 }
 
 func Test_AnythingOnClosedFileFails(t *testing.T) {
 	tempFile, _ := ioutil.TempFile(os.TempDir(), "lala")
-	defer os.Remove(tempFile.Name())
+	defer deferredCleanup(tempFile)
 
 	f, err := CreateExt(tempFile.Name(), password, BEBlockSize, 1)
 	assertNoErr(err, t)
@@ -144,20 +146,22 @@ func Test_AnythingOnClosedFileFails(t *testing.T) {
 
 func Test_ClosingAnErroredSoefIsOK(t *testing.T) {
 	tempFile, _ := ioutil.TempFile(os.TempDir(), "lala")
-	defer os.Remove(tempFile.Name())
+	defer deferredCleanup(tempFile)
 
 	f, err := CreateExt(tempFile.Name(), password, BEBlockSize, 1)
 	assertNoErr(err, t)
 	for i := 0; i < 1024; i++ { // so it is bigger than 1 buffer
-		f.WriteString("HELLO")
+		_, err = f.WriteString("HELLO")
+		assertNoErr(err, t)
 	}
 
 	_ = f.file.Close() // this will trigger an error on the following read as the underlying file is close
 
-	f.Seek(0, 0)
+	_, err = f.Seek(0, 0)
+	assertNoErr(err, t)
 	b := make([]byte, 128)
 	_, err = f.Read(b)
-	if err.Error() != "could not read nonce bytes" {
+	if err == nil || err.Error() != "could not read nonce bytes" {
 		t.Fatal()
 	}
 
@@ -170,5 +174,11 @@ func Test_ClosingAnErroredSoefIsOK(t *testing.T) {
 func assertNoErr(err error, t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
+	}
+}
+
+func deferredCleanup(file *os.File) {
+	if file != nil {
+		_ = os.Remove(file.Name())
 	}
 }

@@ -66,7 +66,7 @@ type BlockZero struct {
 
 func (z *BlockZero) Bytes() []byte {
 	buf := new(bytes.Buffer)
-	binary.Write(buf, binary.LittleEndian, z)
+	_ = binary.Write(buf, binary.LittleEndian, z)
 	return buf.Bytes()
 }
 

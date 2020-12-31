@@ -8,7 +8,7 @@ import (
 func TestSealOpen(t *testing.T) {
 	f := File{}
 	h := givenValidHeader()
-	f.initialiseCiphers(password, &h)
+	_ = f.initialiseCiphers(password, &h)
 
 	plainText := "This is a secret"
 	cipherText, nonce := f.seal([]byte(plainText), 1234)
@@ -24,7 +24,7 @@ func TestSealOpen(t *testing.T) {
 func TestSealOpen_InvalidBlockNo(t *testing.T) {
 	f := File{}
 	h := givenValidHeader()
-	f.initialiseCiphers(password, &h)
+	_ = f.initialiseCiphers(password, &h)
 	plainText := "This is a secret"
 	cipherText, nonce := f.seal([]byte(plainText), 1234)
 	_, err := f.unseal(cipherText, 5432, nonce)
@@ -36,7 +36,7 @@ func TestSealOpen_InvalidBlockNo(t *testing.T) {
 func TestSealOpen_Sizes(t *testing.T) {
 	f := File{}
 	h := givenValidHeader()
-	f.initialiseCiphers(password, &h)
+	_ = f.initialiseCiphers(password, &h)
 	plainText := "This is a secret"
 	cipherText, nonce := f.seal([]byte(plainText), 1234)
 
@@ -53,7 +53,7 @@ func TestSealOpen_Sizes(t *testing.T) {
 func TestSealOpen_AnyByteChangeShouldFail(t *testing.T) {
 	f := File{}
 	h := givenValidHeader()
-	f.initialiseCiphers(password, &h)
+	_ = f.initialiseCiphers(password, &h)
 	plainText := "This is a secret"
 	cipherText, nonce := f.seal([]byte(plainText), 1234)
 	// cipher-text

@@ -129,7 +129,13 @@ func (f *File) getOrLoadBlock(blockNo int64) (*inMemoryBlock, error) {
 	}
 
 	blockOffset := int64(HeaderLength) + int64(f.blockZero.DiskBlockSize)*blockNo
-	f.file.Seek(blockOffset, 0)
+	seekOfs, err := f.file.Seek(blockOffset, 0)
+	if err != nil {
+		return nil, err
+	}
+	if seekOfs != blockOffset {
+		return nil, errors.New("could not seek to block start")
+	}
 
 	nonce := make([]byte, nonceSize)
 	n, err := f.file.Read(nonce)
@@ -194,15 +200,15 @@ func (f *File) unseal(cipherText []byte, blockNo uint64, nonce []byte) (plainTex
 	return
 }
 
-func Create(name string) (*File, error) {
+func Create(_ string) (*File, error) {
 	return nil, errors.New("use CreateExt")
 }
 
-func Open(name string) (*File, error) {
+func Open(_ string) (*File, error) {
 	return nil, errors.New("use OpenExt")
 }
 
-func OpenFile(name string, flag int, perm os.FileMode) (*File, error) {
+func OpenFile(_ string, _ int, _ os.FileMode) (*File, error) {
 	return nil, errors.New("use OpenExt")
 }
 
@@ -227,7 +233,10 @@ func OpenExt(name string, password string, memoryBuffers int) (*File, error) {
 		return nil, err
 	}
 
-	file.initialiseCache(memoryBuffers)
+	err = file.initialiseCache(memoryBuffers)
+	if err != nil {
+		return nil, err
+	}
 
 	file.blockZero = BlockZero{
 		BEncBlockSize: 0,
@@ -280,7 +289,10 @@ func CreateExt(name string, password string, BEBlockSize int, memoryBuffers int)
 		return nil, err
 	}
 
-	file.initialiseCache(memoryBuffers)
+	err = file.initialiseCache(memoryBuffers)
+	if err != nil {
+		return nil, err
+	}
 
 	// calculates encrypted block size
 	plainTextBlock := crypto.RandBytes(BEBlockSize)
@@ -465,7 +477,7 @@ func (f *File) Seek(offset int64, whence int) (ret int64, err error) {
 	return f.cursor, nil
 }
 
-func (f *File) Sync() {
+func (f *File) Sync() error {
 	for _, blockNoI := range f.cache.Keys() {
 		imbI, ok := f.cache.Get(blockNoI)
 		if ok {
@@ -473,7 +485,7 @@ func (f *File) Sync() {
 		}
 	}
 	f.flushBlockZero()
-	f.file.Sync()
+	return f.file.Sync()
 }
 
 func (f *File) Truncate(size int64) error {
