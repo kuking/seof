@@ -6,18 +6,20 @@ import (
 	"fmt"
 	"github.com/kuking/seof"
 	"github.com/kuking/seof/crypto"
+	"math/rand"
 	"os"
 )
 
 var password = "e924a81d0abd80b4c2ded664c7881a75575d9e45"
 
 //var wholeSize = 1024 * 1024 * 1024
-var wholeSize = 16 * 1024 * 1024
+var wholeSize = 256 * 1024 * 1024
 var seofBlockSize = 1024
 
 var misalignedBlockSizes = []int{
 	1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
 	256,
+	512,
 	seofBlockSize - 100,
 	seofBlockSize - 1,
 	seofBlockSize,
@@ -60,6 +62,11 @@ func main() {
 		fullyCompare(seofBlockSize)
 	}
 
+	fmt.Printf("5.1. Writing %v random chunks of miscelaneous sizes of up to %v bytes\n", wholeSize/1024, seofBlockSize*2)
+	writeRandomChunks(wholeSize/1024, seofBlockSize*2)
+	fmt.Printf("5.2. Verifying (fast, using chunk_size=%v)\n", seofBlockSize)
+	fullyCompare(seofBlockSize)
+
 	fmt.Println("\nSUCCESS!")
 	_ = nat.Close()
 	_ = os.Remove(nat.Name())
@@ -75,9 +82,6 @@ func fullyCompare(readChunkSize int) {
 	lastDot := 0
 	ofs := 0
 	for {
-		//if ofs == 16777068 {
-		//	fmt.Println("debugging")
-		//}
 		n, err := nat.Read(natb)
 		if err != nil {
 			fmt.Println("nat", ofs, n, wholeSize)
@@ -116,7 +120,7 @@ func writeFullyUsingChunkSize(cs int) {
 	_, _ = enc.Seek(0, 0)
 	lastDot := 0
 	ofs := 0
-	for ; ofs < wholeSize; {
+	for ofs < wholeSize {
 
 		toWrite := cs
 		if ofs+cs > wholeSize {
@@ -144,6 +148,52 @@ func writeFullyUsingChunkSize(cs int) {
 		}
 	}
 	fmt.Println(" done")
+}
+
+func writeRandomChunks(chunks int, maxSize int) {
+
+	lastDot := 0
+	for chunk := 0; chunk < chunks; chunk++ {
+
+		b := crypto.RandBytes(rand.Int() % maxSize)
+		ofs := int64(rand.Int() % (wholeSize - len(b)))
+
+		nOfs, err := nat.Seek(ofs, 0)
+		assertErr(err, "seeking native file")
+		if nOfs != ofs {
+			fmt.Printf("ERROR: Couldn't seek to %v in native file.", ofs)
+			os.Exit(-1)
+		}
+
+		n, err := nat.Write(b)
+		assertWritten(n, len(b))
+		assertErr(err, "writing native file")
+
+		mOfs, err := enc.Seek(ofs, 0)
+		assertErr(err, "seeking encrypted file")
+		if mOfs != ofs {
+			fmt.Printf("ERROR: Couldn't seek to %v in encrypted file.", ofs)
+			os.Exit(-1)
+		}
+
+		m, err := enc.Write(b)
+		assertWritten(m, len(b))
+		assertErr(err, "writing encrypted file")
+		if n != m || n != len(b) || m != len(b) {
+			fmt.Printf(
+				"\nERROR: It did not write the expected quantity, written native=%v, seof=%v, expected=%v, ofs=%v\n",
+				n, m, len(b), ofs)
+			os.Exit(-1)
+		}
+
+		if lastDot < chunk/(chunks/50) {
+			_, _ = os.Stdout.WriteString(".")
+			_ = os.Stdout.Sync()
+			lastDot = chunk / (chunks / 50)
+		}
+	}
+	fmt.Println(" done")
+
 }
 
 func assertWritten(n, exp int) {
