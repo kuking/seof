@@ -421,7 +421,11 @@ func (f *File) Read(b []byte) (n int, err error) {
 	if len(imb.plainText) != int(f.blockZero.BEncBlockSize) {
 		// at end of file, we read what we can --- or end of block-ish //XXX: potential bug here
 		copy(b[:], imb.plainText[ofsStart:])
-		n := len(imb.plainText) - ofsStart
+		if len(b) < len(imb.plainText[ofsStart:]) {
+			n = len(b)
+		} else {
+			n = len(imb.plainText[ofsStart:])
+		}
 		f.cursor += int64(n)
 		return n, nil
 	}
@@ -437,6 +441,10 @@ func (f *File) Read(b []byte) (n int, err error) {
 	partial := int(f.blockZero.BEncBlockSize) - ofsStart
 	copy(b[:], imb.plainText[ofsStart:])
 	f.cursor += int64(partial)
+	if f.cursor == int64(f.blockZero.BEncFileSize) {
+		// don't recurse, we know we are at the end of the file it will trigger an EOF as trying to read at EOF
+		return partial, err
+	}
 	n, err = f.Read(b[partial:])
 	return n + partial, err
 }
