@@ -349,8 +349,10 @@ func (f *File) Write(b []byte) (n int, err error) {
 		imb.plainText = append(imb.plainText, 0)
 	}
 
-	if len(b) < ofsStart+int(f.blockZero.BEncBlockSize) {
-		// partial block write
+	availableInBlock := int(f.blockZero.BEncBlockSize) - ofsStart
+	if len(b) < availableInBlock {
+		// b fits wholly in this block
+		// appends bytes to an potentially half-allocated block
 		for i := len(imb.plainText); i < ofsStart+len(b); i++ {
 			imb.plainText = append(imb.plainText, 0)
 		}
@@ -361,15 +363,14 @@ func (f *File) Write(b []byte) (n int, err error) {
 		}
 		return len(b), nil
 	} else {
-		// whole block write
-		partial := int(f.blockZero.BEncBlockSize) - ofsStart
-		imb.plainText = append(imb.plainText[0:ofsStart], b[0:partial]...)
-		f.cursor += int64(partial)
+		// B won't fit wholly in this block
+		imb.plainText = append(imb.plainText[0:ofsStart], b[0:availableInBlock]...)
+		f.cursor += int64(availableInBlock)
 		if uint64(f.cursor) > f.blockZero.BEncFileSize {
 			f.blockZero.BEncFileSize = uint64(f.cursor)
 		}
-		n, err := f.Write(b[partial:])
-		return partial + n, err
+		n, err := f.Write(b[availableInBlock:])
+		return availableInBlock + n, err
 	}
 }
 
@@ -388,6 +389,9 @@ func (f *File) WriteString(s string) (n int, err error) {
 func (f *File) Read(b []byte) (n int, err error) {
 	if f.pendingErr != nil {
 		return 0, *f.pendingErr
+	}
+	if len(b) == 0 {
+		return 0, nil
 	}
 	if f.cursor >= int64(f.blockZero.BEncFileSize) {
 		return 0, io.EOF
@@ -435,6 +439,9 @@ func (f *File) ReadAt(b []byte, off int64) (n int, err error) {
 //}
 
 func (f *File) Seek(offset int64, whence int) (ret int64, err error) {
+	if f.pendingErr != nil {
+		return 0, *f.pendingErr
+	}
 	newCursor := int64(0)
 	if whence == 0 {
 		if offset < 0 { //XXX: can this be relative?
@@ -470,13 +477,20 @@ func (f *File) Sync() {
 }
 
 func (f *File) Truncate(size int64) error {
+	if f.pendingErr != nil {
+		return *f.pendingErr
+	}
 	return errors.New("not implemented")
 }
 
 func (f *File) Close() error {
+	if f.pendingErr != nil && f.pendingErr != &os.ErrClosed {
+		return *f.pendingErr
+	}
 	f.cache.Purge()
 	f.flushBlockZero()
-
+	closedErr := os.ErrClosed
+	f.pendingErr = &closedErr
 	return f.file.Close()
 }
 
