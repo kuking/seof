@@ -241,7 +241,37 @@ func TestFile_Truncate(t *testing.T) {
 	if stats.Size() != int64(HeaderLength)+int64(3*f.blockZero.DiskBlockSize) { // +1 for blockzero
 		t.Fatal("seems it did not truncate at the right place")
 	}
+}
 
+func TestFile_Stat(t *testing.T) {
+	tempFile, _ := ioutil.TempFile(os.TempDir(), "lala")
+	defer deferredCleanup(tempFile)
+
+	f, err := CreateExt(tempFile.Name(), password, BEBlockSize, 10) // 10 is important to buffers are left in memory
+	assertNoErr(err, t)
+	for i := 0; i < 1024; i++ { // so it is bigger than 1 buffer
+		_, err = f.WriteString("HELLO")
+		assertNoErr(err, t)
+	}
+
+	stats, err := f.Stat()
+	assertNoErr(err, t)
+
+	if stats.Size() != 1024*5 {
+		t.Fatal("stats.size should return before encryption size")
+	}
+
+	if stats.Name() != f.Name() || stats.IsDir() {
+		t.Fatal()
+	}
+
+	tempFileStats, err := tempFile.Stat()
+	assertNoErr(err, t)
+
+	// || tempFileStats.Sys() != stats.Sys() can't be compared
+	if tempFileStats.Mode() != stats.Mode() || tempFileStats.ModTime() != stats.ModTime() {
+		t.Fatal()
+	}
 }
 
 func assertNoErr(err error, t *testing.T) {

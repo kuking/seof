@@ -11,6 +11,7 @@ import (
 	"golang.org/x/crypto/scrypt"
 	"io"
 	"os"
+	"time"
 )
 
 const nonceSize int = 36
@@ -534,6 +535,49 @@ func (f *File) Truncate(size int64) error {
 
 	f.blockZero.BEncFileSize = uint64(size)
 	return f.file.Truncate(int64(HeaderLength) + int64(f.blockZero.DiskBlockSize)*blockNo)
+}
+
+func (f *File) Stat() (os.FileInfo, error) {
+
+	stats, err := f.file.Stat()
+	if err != nil {
+		return nil, err
+	}
+
+	return seofFileInfo{
+		name: f.Name(),
+		size: int64(f.blockZero.BEncFileSize),
+		mode: stats.Mode(),
+		time: stats.ModTime(),
+		sys:  stats.Sys(),
+	}, nil
+}
+
+type seofFileInfo struct {
+	name string
+	size int64
+	mode os.FileMode
+	time time.Time
+	sys  interface{}
+}
+
+func (s seofFileInfo) Name() string {
+	return s.name
+}
+func (s seofFileInfo) Size() int64 {
+	return s.size
+}
+func (s seofFileInfo) Mode() os.FileMode {
+	return s.mode
+}
+func (s seofFileInfo) ModTime() time.Time {
+	return s.time
+}
+func (_ seofFileInfo) IsDir() bool {
+	return false
+}
+func (s seofFileInfo) Sys() interface{} {
+	return s.sys
 }
 
 func (f *File) Close() error {
