@@ -171,6 +171,79 @@ func Test_ClosingAnErroredSoefIsOK(t *testing.T) {
 	assertNoErr(err, t)
 }
 
+func TestFile_Name(t *testing.T) {
+	tempFile, _ := ioutil.TempFile(os.TempDir(), "lala")
+	defer deferredCleanup(tempFile)
+	f, _ := CreateExt(tempFile.Name(), password, BEBlockSize, 1)
+
+	if f.Name() != tempFile.Name() {
+		t.Fatal()
+	}
+	_ = f.Close()
+}
+
+func TestFile_Truncate(t *testing.T) {
+	tempFile, _ := ioutil.TempFile(os.TempDir(), "lala")
+	defer deferredCleanup(tempFile)
+
+	f, err := CreateExt(tempFile.Name(), password, BEBlockSize, 10) // 10 is important to buffers are left in memory
+	assertNoErr(err, t)
+	for i := 0; i < 1024; i++ { // so it is bigger than 1 buffer
+		_, err = f.WriteString("HELLO")
+		assertNoErr(err, t)
+	}
+
+	// too far away
+	err = f.Truncate(1024 * 1024)
+	if err != os.ErrInvalid {
+		t.Fatal()
+	}
+
+	// negative
+	err = f.Truncate(-123)
+	if err != os.ErrInvalid {
+		t.Fatal()
+	}
+
+	// block aligned
+	err = f.Truncate(BEBlockSize * 4)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	stats, err := tempFile.Stat()
+	exp := int64(HeaderLength) + int64(5*f.blockZero.DiskBlockSize) // 4+1=5 because block-zero
+	if stats.Size() != exp {
+		t.Fatal("seems it did not truncate at the right place", stats.Size(), "!=", exp)
+	}
+
+	big := make([]byte, BEBlockSize*10)
+	f.Seek(0, 0)
+	n, err := f.Read(big)
+	assertNoErr(err, t)
+	if n != 4*BEBlockSize {
+		t.Fatal()
+	}
+
+	// Cut half-way block
+	newLength := BEBlockSize + BEBlockSize/2
+	err = f.Truncate(int64(newLength))
+	f.Seek(0, 0)
+	n, err = f.Read(big)
+	assertNoErr(err, t)
+	if n != newLength {
+		t.Fatal()
+	}
+
+	// for sure, after closing the file ... no buffers left hanging
+	f.Close()
+	stats, err = tempFile.Stat()
+	if stats.Size() != int64(HeaderLength)+int64(3*f.blockZero.DiskBlockSize) { // +1 for blockzero
+		t.Fatal("seems it did not truncate at the right place")
+	}
+
+}
+
 func assertNoErr(err error, t *testing.T) {
 	if err != nil {
 		t.Fatal(err)

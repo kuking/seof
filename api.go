@@ -329,9 +329,12 @@ func CreateExt(name string, password string, BEBlockSize int, memoryBuffers int)
 	return &file, nil
 }
 
-func (f *File) blockNoForCursor() int64 {
-	block := f.cursor / int64(f.blockZero.BEncBlockSize)
+func (f *File) blockNoForOffset(offset int64) int64 {
+	block := offset / int64(f.blockZero.BEncBlockSize)
 	return block + 1 // because block zero is special, so everything is offset +1
+}
+func (f *File) blockNoForCursor() int64 {
+	return f.blockNoForOffset(f.cursor)
 }
 
 func (f *File) Write(b []byte) (n int, err error) {
@@ -503,7 +506,34 @@ func (f *File) Truncate(size int64) error {
 	if f.pendingErr != nil {
 		return *f.pendingErr
 	}
-	return errors.New("not implemented")
+	if size < 0 || uint64(size) > f.blockZero.BEncFileSize {
+		return os.ErrInvalid
+	}
+
+	blockNo := f.blockNoForOffset(size)
+
+	partial := size%int64(f.blockZero.BEncBlockSize) != 0
+	if partial {
+		imb, err := f.getOrLoadBlock(blockNo)
+		if err != nil {
+			return err
+		}
+		imb.plainText = imb.plainText[0 : size%int64(f.blockZero.BEncBlockSize)]
+		imb.modified = true
+	}
+
+	if partial {
+		blockNo++
+	}
+	for _, k := range f.cache.Keys() {
+		cacheBlockNo := k.(int64)
+		if blockNo <= cacheBlockNo {
+			f.cache.Remove(k)
+		}
+	}
+
+	f.blockZero.BEncFileSize = uint64(size)
+	return f.file.Truncate(int64(HeaderLength) + int64(f.blockZero.DiskBlockSize)*blockNo)
 }
 
 func (f *File) Close() error {
