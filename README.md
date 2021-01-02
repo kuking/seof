@@ -72,8 +72,8 @@ Usage of ./seof: seof file utility
     	block size (default: 1024)
 
 NOTES:
-  - Password must to be provided in a file. Command line is not secure in a multi-user host.
-  - When encrypting, contents have to be provided via a pipe file, while decrypting output is always to stdout.
+  - Password must be provided in a file. Command line is not secure in a multi-user host.
+  - When encrypting, contents have to be provided via stdin pipe, decrypted output will be via stdout.
 
 Examples:
   $ cat file | seof -e -p @password_file file.seof
