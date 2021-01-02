@@ -36,7 +36,7 @@ func Test_HappySequentialWriteRead(t *testing.T) {
 		t.Fatal("It did not read fully")
 	}
 	if !bytes.Equal(data, readBuf[0:n]) {
-		t.Fatal("What was read was not correct what was initially written")
+		t.Fatal("read error, does not equals to initial write")
 	}
 	err = f.Close()
 	assertNoErr(err, t)
