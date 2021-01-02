@@ -11,14 +11,14 @@ import (
 	"os"
 )
 
-var doDecrypt bool
+var doEncrypt bool
 var passwordFile string
 var doHelp bool
 var doInfo bool
 var blockSize uint
 
 func doArgsParsing() bool {
-	flag.BoolVar(&doDecrypt, "d", false, "decrypt (default: to encrypt)")
+	flag.BoolVar(&doEncrypt, "e", false, "encrypt (default: to decrypt)")
 	flag.BoolVar(&doInfo, "i", false, "show seof encrypted file metadata")
 	flag.StringVar(&passwordFile, "p", "", "password file")
 	flag.UintVar(&blockSize, "s", 1024, "block size (default: 1024)")
@@ -33,8 +33,8 @@ NOTES:
   - When encrypting, contents have to be provided via a pipe file, while decrypting output is always to stdout.
 
 Examples: 
-  $ cat file | seof -p @password_file file.seof
-  $ seof -d -p @password_file file.seof > file
+  $ cat file | seof -e -p @password_file file.seof
+  $ seof -p @password_file file.seof > file
   $ seof -i -p @password_file file.seof 
 `)
 		return false
@@ -76,7 +76,7 @@ func main() {
 
 	filename := os.Args[len(os.Args)-1]
 	var ef *seof.File
-	if doInfo || doDecrypt {
+	if doInfo || !doEncrypt {
 		ef, err = seof.OpenExt(filename, password, 10)
 	} else {
 		ef, err = seof.CreateExt(filename, password, int(blockSize), 10)
@@ -101,10 +101,10 @@ func main() {
 		hexa := hex.EncodeToString(salt)
 		fmt.Printf("%69v\n%69v\n%69v\n", hexa[:64], hexa[64:128], hexa[128:])
 
-	} else if doDecrypt {
-		_, err = io.Copy(os.Stdout, ef)
-	} else {
+	} else if doEncrypt {
 		_, err = io.Copy(ef, os.Stdin)
+	} else {
+		_, err = io.Copy(os.Stdout, ef)
 	}
 	assertNoError(err, "FATAL: io error: %v")
 
