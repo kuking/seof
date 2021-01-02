@@ -19,6 +19,7 @@ const nonceSize int = 36
 type File struct {
 	file       *os.File
 	pendingErr *error
+	header     Header
 	blockZero  BlockZero
 	aead       [3]cipher.AEAD
 	cache      *lru.Cache
@@ -232,6 +233,8 @@ func OpenExt(name string, password string, memoryBuffers int) (*File, error) {
 	if err != nil {
 		return nil, err
 	}
+	file.header = header
+
 	err = file.initialiseCiphers(password, &header)
 	if err != nil {
 		return nil, err
@@ -302,6 +305,7 @@ func CreateExt(name string, password string, BEBlockSize int, memoryBuffers int)
 	plainTextBlock := crypto.RandBytes(BEBlockSize)
 	cipherText, _ := file.seal(plainTextBlock, 1)
 	header.DiskBlockSize = uint32(nonceSize + 4 + len(cipherText)) // 4=length of uint32 for cipherTextLength
+	file.header = header
 
 	// blockZero
 	file.blockZero = BlockZero{
@@ -554,6 +558,10 @@ func (f *File) Stat() (*SeofFileInfo, error) {
 		diskBlockSize: f.blockZero.DiskBlockSize,
 		bEncBlockSize: f.blockZero.BEncBlockSize,
 		blocksWritten: f.blockZero.BlocksWritten,
+		scryptSalt:    f.header.ScriptSalt[:],
+		scryptN:       f.header.ScriptN,
+		scryptR:       f.header.ScriptR,
+		scryptP:       f.header.ScriptP,
 	}, nil
 }
 
@@ -567,6 +575,10 @@ type SeofFileInfo struct {
 	diskBlockSize uint32
 	bEncBlockSize uint32
 	blocksWritten uint64
+	scryptSalt    []byte
+	scryptN       uint32
+	scryptR       uint32
+	scryptP       uint32
 }
 
 func (s SeofFileInfo) Name() string {
@@ -598,6 +610,9 @@ func (s SeofFileInfo) BEBlockSize() uint32 {
 }
 func (s SeofFileInfo) BlocksWritten() uint64 {
 	return s.blocksWritten
+}
+func (s SeofFileInfo) SCryptParameters() (salt []byte, N, R, P uint32) {
+	return s.scryptSalt, s.scryptN, s.scryptR, s.scryptP
 }
 
 func (f *File) Close() error {

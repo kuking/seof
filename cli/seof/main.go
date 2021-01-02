@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/hex"
 	"flag"
 	"fmt"
 	pwe "github.com/kuking/go-pwentropy"
@@ -86,15 +87,19 @@ func main() {
 		stats, err := ef.Stat()
 		assertNoError(err, "FATAL: problems doing file stats %v")
 
-		fmt.Println("         Name:", stats.Name())
-		fmt.Println("    Mod. Time:", stats.ModTime())
-		fmt.Printf("    File Mode: %v \n", stats.Mode())
-		fmt.Printf(" Content Size: %v bytes\n", stats.Size())
-		fmt.Printf("    File Size: %v bytes (disk occupied)\n", stats.EncryptedSize())
-		fmt.Printf("     Overhead: %2.2f%% (encryption) \n", float32(stats.EncryptedSize()) * 100 / float32(stats.Size())-100)
-		fmt.Printf("Content Block: %v bytes (before encryption)\n", stats.BEBlockSize())
-		fmt.Printf("   Disk Block: %v bytes (after encryption; on disk)\n", stats.DiskBlockSize())
-		fmt.Printf("Blocks Writen: %v (= unique nonces written)\n", stats.BlocksWritten())
+		fmt.Printf("           File Name: %v\n", stats.Name())
+		fmt.Printf("   Modification Time: %v\n", stats.ModTime())
+		fmt.Printf("           File Mode: %v \n", stats.Mode())
+		fmt.Printf("        Content Size: %v bytes\n", stats.Size())
+		fmt.Printf("   File Size On Disk: %v bytes\n", stats.EncryptedSize())
+		fmt.Printf(" Encryption Overhead: %2.2f%%\n", float32(stats.EncryptedSize())*100/float32(stats.Size())-100)
+		fmt.Printf("  Content Block Size: %v bytes\n", stats.BEBlockSize())
+		fmt.Printf("Encrypted Block Size: %v bytes\n", stats.DiskBlockSize())
+		fmt.Printf(" Total Blocks Writen: %v (= unique nonces)\n", stats.BlocksWritten())
+		salt, n, r, p := stats.SCryptParameters()
+		fmt.Printf("   SCrypt Parameters: N=%v, R=%v, P=%v, keyLength=96, salt=\n", n, r, p)
+		hexa := hex.EncodeToString(salt)
+		fmt.Printf("%69v\n%69v\n%69v\n", hexa[:64], hexa[64:128], hexa[128:])
 
 	} else if doDecrypt {
 		_, err = io.Copy(os.Stdout, ef)
