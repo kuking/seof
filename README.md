@@ -266,7 +266,7 @@ Attack vectors
 
 - Each time a new block is written, a new nonce is generated, less than 2^32 write operations should be done in one
   particular file (and key.). Internally the implementation uses buffers and will save (and generate a new nonce) only
-  when the buffer needs to be flushed to disk (i.e. file closed, sync or cache removal.)
+  when the buffer needs to be flushed to disk (i.e. file closed, sync or cache eviction.)
   if your application does a lots of random seeks and writes (constantly invalidating the blocks cache, forcing flushing
   blocks to disk, generating new nonces for the new encrypted block) you might hit that upper limit. Block 0 holds a
   counter with the number of unique nonces ever generated (which equals to the number of written and encrypted blocks).
