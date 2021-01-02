@@ -121,6 +121,17 @@ Finally, encryption occurs in blocks, so changing just one byte would require en
 Sequential reads/writes with an occasional seek should be fine. This is the typical user cases that is well satisfied
 with just one memory buffer, and a file block of 10kb.
 
+### CLI sequential encryption/decryption performance
+
+(MacBook Pro (13-inch, 2018, Four Thunderbolt 3 Ports), 2.7 GHz Quad-Core Intel Core i7)
+
+```
+$ cat ~/Downloads/debian-10.5.0-amd64-netinst.iso | pv | ./seof -p password -e debian-10.5.0-amd64-netinst.iso.seof 
+ 349MiB 0:00:06 [50.8MiB/s] [                            <=>                                                    ]
+
+$ ./seof -p password debian-10.5.0-amd64-netinst.iso.seof | pv > debian-10.5.0-amd64-netinst.iso                                                                                                      ed@luxuriance
+ 349MiB 0:00:02 [ 132MiB/s] [            <=>                                                                    ]
+```
 
 File Structure
 --------------
@@ -146,7 +157,7 @@ File Structure
 Testing
 -------
 Code is extensively tested and there is a soak test suite that tests multiple access patterns (i.e. misalligned reads,
-writes, etc). 
+writes, etc).
 
 ```
 $ ./soaktest                                                                                                                                                                                          ed@luxuriance
