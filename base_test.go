@@ -269,10 +269,11 @@ func TestFile_Stat(t *testing.T) {
 		t.Fatal()
 	}
 
-	if len(stats.scryptSalt) != 96 ||
-		crypto.CurrentSCryptParameters.N != stats.scryptN ||
-		crypto.CurrentSCryptParameters.P != stats.scryptP ||
-		crypto.CurrentSCryptParameters.R != stats.scryptR {
+	salt, n, r, p := stats.SCryptParameters()
+	if len(salt) != 96 ||
+		crypto.CurrentSCryptParameters.N != n ||
+		crypto.CurrentSCryptParameters.P != p ||
+		crypto.CurrentSCryptParameters.R != r {
 		t.Fatal()
 	}
 
