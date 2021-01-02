@@ -164,7 +164,9 @@ soaktest: seof soak test, creates a native file and a seof encrypted file.
 .................................................. done
 3.4. Fully comparing files, using read_chunk_size=4
 .................................................. done
+
 [...]
+
 .................................................. done
 3.16. Fully comparing files, using read_chunk_size=16
 .................................................. done
@@ -202,7 +204,9 @@ soaktest: seof soak test, creates a native file and a seof encrypted file.
 .................................................. done
 4.3.1. Rewriting wholy using chunk_size=3
 .................................................. done
+
 [...]
+
 4.22.1. Rewriting wholy using chunk_size=1025
 .................................................. done
 4.22.2. Verifying (fast, using chunk_size=1024)
@@ -231,11 +235,11 @@ soaktest: seof soak test, creates a native file and a seof encrypted file.
 .................................................. done
 4.28.2. Verifying (fast, using chunk_size=1024)
 .................................................. done
-5.1. Writing 1024 random chunks of miscelaneous sizes of up to 2048 bytes
+5.1. Writing 262144 random chunks of miscelaneous sizes of up to 2048 bytes
 ................................................... done
 5.2. Verifying (fast, using chunk_size=1024)
 .................................................. done
-6.1. Reading 1024 random chunks of miscelaneous sizes of up to 2048 bytes
+6.1. Reading 262144 random chunks of miscelaneous sizes of up to 2048 bytes
 ................................................... done
 
 SUCCESS!
