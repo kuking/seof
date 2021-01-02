@@ -21,7 +21,7 @@ func doArgsParsing() bool {
 	flag.BoolVar(&doEncrypt, "e", false, "encrypt (default: to decrypt)")
 	flag.BoolVar(&doInfo, "i", false, "show seof encrypted file metadata")
 	flag.StringVar(&passwordFile, "p", "", "password file")
-	flag.UintVar(&blockSize, "s", 1024, "block size (default: 1024)")
+	flag.UintVar(&blockSize, "s", 1024, "block size")
 	flag.BoolVar(&doHelp, "h", false, "Show usage")
 	flag.Parse()
 	if doHelp || flag.NArg() != 1 {

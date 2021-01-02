@@ -69,7 +69,7 @@ Usage of ./seof: seof file utility
   -p string
     	password file
   -s uint
-    	block size (default: 1024) (default 1024)
+    	block size (default: 1024)
 
 NOTES:
   - Password must to be provided in a file. Command line is not secure in a multi-user host.
