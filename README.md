@@ -143,9 +143,108 @@ File Structure
     - uint64: written blocks (as in number of unique nonces generated)
     - []byte: Further metadata expansion
 
+Testing
+-------
+Code is extensively tested and there is a soak test suite that tests multiple access patterns (i.e. misalligned reads,
+writes, etc). 
+
+```
+$ ./soaktest                                                                                                                                                                                          ed@luxuriance
+soaktest: seof soak test, creates a native file and a seof encrypted file.
+  applies many different IO operations equally to both files and verifies both behave similar. You want a fast disk (NVMe).
+
+1. Creating 2 x 256MB files: native.soak, seof.soak
+2. Writing 256MB of [0x00, 0x01, 0x02, ... 0xff] in: native.soak, seof.soak
+.................................................. done
+3.1. Fully comparing files, using read_chunk_size=1
+.................................................. done
+3.2. Fully comparing files, using read_chunk_size=2
+.................................................. done
+3.3. Fully comparing files, using read_chunk_size=3
+.................................................. done
+3.4. Fully comparing files, using read_chunk_size=4
+.................................................. done
+[...]
+.................................................. done
+3.16. Fully comparing files, using read_chunk_size=16
+.................................................. done
+3.17. Fully comparing files, using read_chunk_size=256
+.................................................. done
+3.18. Fully comparing files, using read_chunk_size=512
+.................................................. done
+3.19. Fully comparing files, using read_chunk_size=924
+.................................................. done
+3.20. Fully comparing files, using read_chunk_size=1023
+.................................................. done
+3.21. Fully comparing files, using read_chunk_size=1024
+.................................................. done
+3.22. Fully comparing files, using read_chunk_size=1025
+.................................................. done
+3.23. Fully comparing files, using read_chunk_size=1124
+.................................................. done
+3.24. Fully comparing files, using read_chunk_size=2048
+.................................................. done
+3.25. Fully comparing files, using read_chunk_size=3072
+.................................................. done
+3.26. Fully comparing files, using read_chunk_size=4096
+.................................................. done
+3.27. Fully comparing files, using read_chunk_size=4095
+.................................................. done
+3.28. Fully comparing files, using read_chunk_size=4097
+.................................................. done
+4.1.1. Rewriting wholy using chunk_size=1
+.................................................. done
+4.1.2. Verifying (fast, using chunk_size=1024)
+.................................................. done
+4.2.1. Rewriting wholy using chunk_size=2
+.................................................. done
+4.2.2. Verifying (fast, using chunk_size=1024)
+.................................................. done
+4.3.1. Rewriting wholy using chunk_size=3
+.................................................. done
+[...]
+4.22.1. Rewriting wholy using chunk_size=1025
+.................................................. done
+4.22.2. Verifying (fast, using chunk_size=1024)
+.................................................. done
+4.23.1. Rewriting wholy using chunk_size=1124
+.................................................. done
+4.23.2. Verifying (fast, using chunk_size=1024)
+.................................................. done
+4.24.1. Rewriting wholy using chunk_size=2048
+.................................................. done
+4.24.2. Verifying (fast, using chunk_size=1024)
+.................................................. done
+4.25.1. Rewriting wholy using chunk_size=3072
+.................................................. done
+4.25.2. Verifying (fast, using chunk_size=1024)
+.................................................. done
+4.26.1. Rewriting wholy using chunk_size=4096
+.................................................. done
+4.26.2. Verifying (fast, using chunk_size=1024)
+.................................................. done
+4.27.1. Rewriting wholy using chunk_size=4095
+.................................................. done
+4.27.2. Verifying (fast, using chunk_size=1024)
+.................................................. done
+4.28.1. Rewriting wholy using chunk_size=4097
+.................................................. done
+4.28.2. Verifying (fast, using chunk_size=1024)
+.................................................. done
+5.1. Writing 1024 random chunks of miscelaneous sizes of up to 2048 bytes
+................................................... done
+5.2. Verifying (fast, using chunk_size=1024)
+.................................................. done
+6.1. Reading 1024 random chunks of miscelaneous sizes of up to 2048 bytes
+................................................... done
+
+SUCCESS!
+
+```
+
 Syncronisation
 --------------
-Needs to be done.
+Needs to be done. Multithreading soak test is pending.
 
 Attack vectors
 --------------
