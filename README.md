@@ -58,7 +58,9 @@ etc.
 CLI
 ---
 
-```./seof                                                                                                                                                                                              ed@luxuriance
+Usage, it can encrypt/decrypt/inspect files' metadata from CLI:
+
+```$ ./seof                                                                                                                                                                                              ed@luxuriance
 Usage of ./seof: seof file utility
 
   -e	encrypt (default: to decrypt)
@@ -77,6 +79,27 @@ Examples:
   $ cat file | seof -e -p @password_file file.seof
   $ seof -p @password_file file.seof > file
   $ seof -i -p @password_file file.seof
+```
+
+Inspecting metadata for an encrypted file:
+
+```
+
+$  » ./seof -p password -i img.seof                                                                                                                                                                      ed@luxuriance
+           File Name: img.seof
+   Modification Time: 2021-01-02 01:27:38.753496583 +0000 GMT
+           File Mode: -rw-r--r--
+        Content Size: 8787066880 bytes
+   File Size On Disk: 9542206680 bytes
+ Encryption Overhead: 8.59%
+  Content Block Size: 1024 bytes
+Encrypted Block Size: 1112 bytes
+ Total Blocks Writen: 8581122 (= unique nonces)
+   SCrypt Parameters: N=131072, R=8, P=1, keyLength=96, salt=
+     089ce2d0fb75b4d6e969ebafe63e6b01cb544e66ff0b6373d90d570e08993d25
+     9c38a3dea71e7dad2f87a0b3e0bad37be84635aa033112b996538da8286d754b
+     2af89284a65b9c5c6b14023f4fa53dac2fbdf6ab1bf9ae5bd8af94d5ef4d5c9f
+     
   ```
 
 Performance
