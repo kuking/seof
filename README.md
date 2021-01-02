@@ -289,3 +289,4 @@ TODO
 - Multithreading soak test
 - Multithreading locking/safy
 - Release
+- Flag to allow reading empty holes in sparse files as no errors
