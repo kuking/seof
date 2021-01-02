@@ -182,6 +182,56 @@ func TestFile_Name(t *testing.T) {
 	_ = f.Close()
 }
 
+func TestFile_seek(t *testing.T) {
+	tempFile, _ := ioutil.TempFile(os.TempDir(), "lala")
+	defer deferredCleanup(tempFile)
+
+	f, err := CreateExt(tempFile.Name(), password, BEBlockSize, 10) // 10 is important to buffers are left in memory
+	assertNoErr(err, t)
+	for i := 0; i < 1024; i++ { // so it is bigger than 1 buffer
+		_, err = f.WriteString("HELLO")
+		assertNoErr(err, t)
+	}
+	n, err := f.Seek(1000, 0)
+	assertNoErr(err, t)
+	if n != 1000 || n != f.cursor {
+		t.Fatal()
+	}
+	n, err = f.Seek(50, 1)
+	assertNoErr(err, t)
+	if n != 1050 || n != f.cursor {
+		t.Fatal()
+	}
+	n, err = f.Seek(50, 2)
+	assertNoErr(err, t)
+	if n != (5*1024)-50 || n != f.cursor {
+		t.Fatal()
+	}
+	n, err = f.Seek(-25, 1)
+	assertNoErr(err, t)
+	if n != (5*1024)-75 || n != f.cursor {
+		t.Fatal()
+	}
+	n, err = f.Seek(1000000000000, 0)
+	assertNoErr(err, t)
+	if n != f.cursor {
+		t.Fatal()
+	}
+
+	n, err = f.Seek(-25, 0)
+	if err == nil {
+		t.Fatal()
+	}
+	n, err = f.Seek(12, 123)
+	if err == nil {
+		t.Fatal()
+	}
+	n, err = f.Seek(-100000000, 1)
+	if err == nil {
+		t.Fatal()
+	}
+}
+
 func TestFile_Truncate(t *testing.T) {
 	tempFile, _ := ioutil.TempFile(os.TempDir(), "lala")
 	defer deferredCleanup(tempFile)
