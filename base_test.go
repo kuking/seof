@@ -265,6 +265,10 @@ func TestFile_Stat(t *testing.T) {
 		t.Fatal()
 	}
 
+	if stats.DiskBlockSize() != 1112 || stats.BEBlockSize() != 1024 || stats.BlocksWritten() != 2 || stats.EncryptedSize() != 240 {
+		t.Fatal()
+	}
+
 	tempFileStats, err := tempFile.Stat()
 	assertNoErr(err, t)
 

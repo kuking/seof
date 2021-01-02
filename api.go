@@ -537,47 +537,67 @@ func (f *File) Truncate(size int64) error {
 	return f.file.Truncate(int64(HeaderLength) + int64(f.blockZero.DiskBlockSize)*blockNo)
 }
 
-func (f *File) Stat() (os.FileInfo, error) {
+func (f *File) Stat() (*SeofFileInfo, error) {
 
 	stats, err := f.file.Stat()
 	if err != nil {
 		return nil, err
 	}
 
-	return seofFileInfo{
-		name: f.Name(),
-		size: int64(f.blockZero.BEncFileSize),
-		mode: stats.Mode(),
-		time: stats.ModTime(),
-		sys:  stats.Sys(),
+	return &SeofFileInfo{
+		name:          f.Name(),
+		size:          int64(f.blockZero.BEncFileSize),
+		eSize:         stats.Size(),
+		mode:          stats.Mode(),
+		time:          stats.ModTime(),
+		sys:           stats.Sys(),
+		diskBlockSize: f.blockZero.DiskBlockSize,
+		bEncBlockSize: f.blockZero.BEncBlockSize,
+		blocksWritten: f.blockZero.BlocksWritten,
 	}, nil
 }
 
-type seofFileInfo struct {
-	name string
-	size int64
-	mode os.FileMode
-	time time.Time
-	sys  interface{}
+type SeofFileInfo struct {
+	name          string
+	size          int64
+	eSize         int64
+	mode          os.FileMode
+	time          time.Time
+	sys           interface{}
+	diskBlockSize uint32
+	bEncBlockSize uint32
+	blocksWritten uint64
 }
 
-func (s seofFileInfo) Name() string {
+func (s SeofFileInfo) Name() string {
 	return s.name
 }
-func (s seofFileInfo) Size() int64 {
+func (s SeofFileInfo) Size() int64 {
 	return s.size
 }
-func (s seofFileInfo) Mode() os.FileMode {
+func (s SeofFileInfo) EncryptedSize() int64 {
+	return s.eSize
+}
+func (s SeofFileInfo) Mode() os.FileMode {
 	return s.mode
 }
-func (s seofFileInfo) ModTime() time.Time {
+func (s SeofFileInfo) ModTime() time.Time {
 	return s.time
 }
-func (_ seofFileInfo) IsDir() bool {
+func (_ SeofFileInfo) IsDir() bool {
 	return false
 }
-func (s seofFileInfo) Sys() interface{} {
+func (s SeofFileInfo) Sys() interface{} {
 	return s.sys
+}
+func (s SeofFileInfo) DiskBlockSize() uint32 {
+	return s.diskBlockSize
+}
+func (s SeofFileInfo) BEBlockSize() uint32 {
+	return s.bEncBlockSize
+}
+func (s SeofFileInfo) BlocksWritten() uint64 {
+	return s.blocksWritten
 }
 
 func (f *File) Close() error {
