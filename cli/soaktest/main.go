@@ -8,6 +8,7 @@ import (
 	"github.com/kuking/seof/crypto"
 	"math/rand"
 	"os"
+	"runtime"
 )
 
 var password = "e924a81d0abd80b4c2ded664c7881a75575d9e45"
@@ -68,6 +69,15 @@ func main() {
 
 	fmt.Printf("6.1. Reading %v random chunks of miscelaneous sizes of up to %v bytes\n", wholeSize/1024, seofBlockSize*2)
 	readingRandomChunks(wholeSize/1024, seofBlockSize*2)
+
+	chunks := wholeSize / 1024 / 16
+	threads := 64
+	fmt.Printf("7.1 Synchronisation: reading native, writing encrypted %v chunks of up to %v bytes within %v concurrent threads\n", chunks*threads, seofBlockSize*2, threads)
+	multithreadingWriteTest(chunks, seofBlockSize*2, threads)
+	fmt.Printf("7.2. Verifying (fast, using chunk_size=%v)\n", seofBlockSize)
+	fullyCompare(seofBlockSize)
+	fmt.Printf("7.3. Synchronisation: reading %v encrypted chunks of up to %v bytes within %v concurrent threads\n", chunks*threads, seofBlockSize*2, threads)
+	multithreadingReadTest(chunks, seofBlockSize*2, threads)
 
 	fmt.Println("\nSUCCESS!")
 	_ = nat.Close()
@@ -209,7 +219,7 @@ func readingRandomChunks(chunks int, maxSize int) {
 		assertErr(err, "reading native file")
 
 		m, err := enc.ReadAt(mb, ofs)
-		assertErr(err, "reding encrypted file")
+		assertErr(err, "reading encrypted file")
 		if n != m || n != len(nb) || m != len(mb) {
 			fmt.Printf(
 				"\nERROR: It did not read the expected quantity, read native=%v, seof=%v, expected=%v, ofs=%v\n",
@@ -231,6 +241,94 @@ func readingRandomChunks(chunks int, maxSize int) {
 		}
 	}
 	fmt.Println(" done")
+}
+
+func multithreadingWriteTest(chunks int, maxSize int, threads int) {
+	runtime.GOMAXPROCS(threads * 2)
+	chunkRead := make(chan int, 5)
+	for t := 0; t < threads; t++ {
+		go concurrentReadWriter(chunkRead, chunks, maxSize, t)
+	}
+
+	lastDot := 0
+	for t := 0; t < threads*chunks; t++ {
+		<-chunkRead
+		if lastDot < t/(threads*chunks/50) {
+			_, _ = os.Stdout.WriteString(".")
+			_ = os.Stdout.Sync()
+			lastDot = t / (threads * chunks / 50)
+		}
+	}
+	fmt.Println(" done")
+}
+
+func concurrentReadWriter(chunkRead chan int, chunks int, maxSize int, threadNo int) {
+	for chunk := 0; chunk < chunks; chunk++ {
+		size := rand.Int() % maxSize
+		nb := make([]byte, size)
+		ofs := int64(rand.Int() % (wholeSize - len(nb)))
+
+		n, err := nat.ReadAt(nb, ofs)
+		assertErr(err, "reading native file")
+
+		m, err := enc.WriteAt(nb, ofs)
+		assertErr(err, "writing encrypted file")
+		if n != m || n != len(nb) {
+			fmt.Printf(
+				"\nERROR: It did not read/write the expected quantity, read native=%v, write seof=%v, expected=%v, ofs=%v (thread no %v)\n",
+				n, m, len(nb), ofs, threadNo)
+			os.Exit(-1)
+		}
+		chunkRead <- threadNo
+	}
+}
+
+func multithreadingReadTest(chunks int, maxSize int, threads int) {
+	runtime.GOMAXPROCS(threads * 2)
+	chunkRead := make(chan int, 5)
+	for t := 0; t < threads; t++ {
+		go concurrentRead(chunkRead, chunks, maxSize, t)
+	}
+
+	lastDot := 0
+	for t := 0; t < threads*chunks; t++ {
+		<-chunkRead
+		if lastDot < t/(threads*chunks/50) {
+			_, _ = os.Stdout.WriteString(".")
+			_ = os.Stdout.Sync()
+			lastDot = t / (threads * chunks / 50)
+		}
+	}
+	fmt.Println(" done")
+}
+
+func concurrentRead(chunkRead chan int, chunks int, maxSize int, threadNo int) {
+	for chunk := 0; chunk < chunks; chunk++ {
+		size := rand.Int() % maxSize
+		nb := make([]byte, size)
+		mb := make([]byte, size)
+		ofs := int64(rand.Int() % (wholeSize - len(nb)))
+
+		n, err := nat.ReadAt(nb, ofs)
+		assertErr(err, "reading native file")
+
+		m, err := enc.ReadAt(mb, ofs)
+		assertErr(err, "reading encrypted file")
+		if n != m || n != len(nb) || m != len(mb) {
+			fmt.Printf(
+				"\nERROR: It did not read the expected quantity, read native=%v, read seof=%v, expected=%v, ofs=%v (thread no %v)\n",
+				n, m, len(nb), ofs, threadNo)
+			os.Exit(-1)
+		}
+		if !bytes.Equal(nb, mb) {
+			fmt.Println("ERROR: Files are not equal.")
+			fmt.Println("native:", hex.EncodeToString(nb))
+			fmt.Println("  seof:", hex.EncodeToString(mb))
+			os.Exit(-1)
+		}
+
+		chunkRead <- threadNo
+	}
 }
 
 func assertWritten(n, exp int) {

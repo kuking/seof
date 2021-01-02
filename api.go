@@ -11,12 +11,14 @@ import (
 	"golang.org/x/crypto/scrypt"
 	"io"
 	"os"
+	"sync"
 	"time"
 )
 
 const nonceSize int = 36
 
 type File struct {
+	mutex      sync.Mutex
 	file       *os.File
 	pendingErr *error
 	header     Header
@@ -343,6 +345,12 @@ func (f *File) blockNoForCursor() int64 {
 }
 
 func (f *File) Write(b []byte) (n int, err error) {
+	f.mutex.Lock()
+	defer f.mutex.Unlock()
+	return f.writeLocked(b)
+}
+
+func (f *File) writeLocked(b []byte) (n int, err error) {
 	if f.pendingErr != nil {
 		return 0, *f.pendingErr
 	}
@@ -392,17 +400,19 @@ func (f *File) Write(b []byte) (n int, err error) {
 		if uint64(f.cursor) > f.blockZero.BEncFileSize {
 			f.blockZero.BEncFileSize = uint64(f.cursor)
 		}
-		n, err := f.Write(b[availableInBlock:])
+		n, err := f.writeLocked(b[availableInBlock:])
 		return availableInBlock + n, err
 	}
 }
 
 func (f *File) WriteAt(b []byte, off int64) (n int, err error) {
+	f.mutex.Lock()
+	defer f.mutex.Unlock()
 	if off < 0 { //XXX: can this be relative?
 		return 0, errors.New("negative offset not allowed")
 	}
 	f.cursor = off
-	return f.Write(b)
+	return f.writeLocked(b)
 }
 
 func (f *File) WriteString(s string) (n int, err error) {
@@ -410,6 +420,12 @@ func (f *File) WriteString(s string) (n int, err error) {
 }
 
 func (f *File) Read(b []byte) (n int, err error) {
+	f.mutex.Lock()
+	defer f.mutex.Unlock()
+	return f.readLocked(b)
+}
+
+func (f *File) readLocked(b []byte) (n int, err error) {
 	if f.pendingErr != nil {
 		return 0, *f.pendingErr
 	}
@@ -453,16 +469,18 @@ func (f *File) Read(b []byte) (n int, err error) {
 		// don't recurse, we know we are at the end of the file it will trigger an EOF as trying to read at EOF
 		return partial, err
 	}
-	n, err = f.Read(b[partial:])
+	n, err = f.readLocked(b[partial:])
 	return n + partial, err
 }
 
 func (f *File) ReadAt(b []byte, off int64) (n int, err error) {
+	f.mutex.Lock()
+	defer f.mutex.Unlock()
 	if off < 0 { //XXX: can this be relative?
 		return 0, errors.New("negative offset not allowed")
 	}
 	f.cursor = off
-	return f.Read(b)
+	return f.readLocked(b)
 }
 
 //func (f *File) ReadFrom(r io.Reader) (n int64, err error) {
@@ -470,6 +488,8 @@ func (f *File) ReadAt(b []byte, off int64) (n int, err error) {
 //}
 
 func (f *File) Seek(offset int64, whence int) (ret int64, err error) {
+	f.mutex.Lock()
+	defer f.mutex.Unlock()
 	if f.pendingErr != nil {
 		return 0, *f.pendingErr
 	}
@@ -497,6 +517,8 @@ func (f *File) Seek(offset int64, whence int) (ret int64, err error) {
 }
 
 func (f *File) Sync() error {
+	f.mutex.Lock()
+	defer f.mutex.Unlock()
 	for _, blockNoI := range f.cache.Keys() {
 		imbI, ok := f.cache.Get(blockNoI)
 		if ok {
@@ -508,6 +530,8 @@ func (f *File) Sync() error {
 }
 
 func (f *File) Truncate(size int64) error {
+	f.mutex.Lock()
+	defer f.mutex.Unlock()
 	if f.pendingErr != nil {
 		return *f.pendingErr
 	}
@@ -542,7 +566,8 @@ func (f *File) Truncate(size int64) error {
 }
 
 func (f *File) Stat() (*SeofFileInfo, error) {
-
+	f.mutex.Lock()
+	defer f.mutex.Unlock()
 	stats, err := f.file.Stat()
 	if err != nil {
 		return nil, err
@@ -616,6 +641,8 @@ func (s SeofFileInfo) SCryptParameters() (salt []byte, N, R, P uint32) {
 }
 
 func (f *File) Close() error {
+	f.mutex.Lock()
+	defer f.mutex.Unlock()
 	if f.pendingErr != nil && f.pendingErr != &os.ErrClosed {
 		return *f.pendingErr
 	}

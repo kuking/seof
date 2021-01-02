@@ -252,6 +252,12 @@ soaktest: seof soak test, creates a native file and a seof encrypted file.
 .................................................. done
 6.1. Reading 262144 random chunks of miscelaneous sizes of up to 2048 bytes
 ................................................... done
+7.1 Synchronisation: reading native, writing encrypted 1048576 chunks of up to 2048 bytes within 64 concurrent threads
+.................................................. done
+7.2. Verifying (fast, using chunk_size=1024)
+.................................................. done
+7.3. Synchronisation: reading encryptede 1048576 chunks of up to 2048 bytes within 64 concurrent threads
+.................................................. done
 
 SUCCESS!
 
@@ -259,7 +265,8 @@ SUCCESS!
 
 Syncronisation
 --------------
-Needs to be done. Multithreading soak test is pending.
+Concurrency safety is achieved with a global lock, do not expect optimal concurrent performance. It is safe to use it in
+a concurrent environment. i.e. multiple goroutines using the same seof encrypted file.
 
 Attack vectors
 --------------
@@ -297,7 +304,5 @@ Attack vectors
 TODO
 ----
 
-- Multithreading soak test
-- Multithreading locking/safy
 - Release
 - Flag to allow reading empty holes in sparse files as no errors
