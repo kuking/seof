@@ -1,45 +1,103 @@
 # go seof: Simple Encrypted os.File
 
-TL/DR STATUS: It works; missing: Truncate, utilities and more testing, release, etc.
-
-Complete implementation and drop-in replacement of golang' [`os.File`](https://golang.org/pkg/os/#File) encrypting the
-underlying file with 768 bits of encryption (Triple AES256 -yes- very silly and very secure). The resulting type can be
-used anywhere an [`os.File`](https://golang.org/pkg/os/#File) would be used. i.e. it can be both sequentially and
-randomly read and write, at any file position for any amount of bytes.
+Encrypted implementation and drop-in replacement of golang' [`os.File`](https://golang.org/pkg/os/#File), the file in
+stored will have 768 bits of encryption (Triple AES256 -yes- very silly and very secure). The resulting type can be used
+anywhere an [`os.File`](https://golang.org/pkg/os/#File) could be used. i.e. it can be both sequentially and randomly
+read and write, at any file position for any amount of bytes, can truncate, seek, stats, etc.
 i.e. [`Read`](https://golang.org/pkg/os/#File.Read),
 [`ReadAt`](https://golang.org/pkg/os/#File.ReadAt),
 [`WriteAt`](https://golang.org/pkg/os/#File.WriteAt),
 [`Seek`](https://golang.org/pkg/os/#File.Seek),
 [`Truncate`](https://golang.org/pkg/os/#File.Truncate), etc.
 
-It derives a file-wide key using scrypt with a provided string password, the file is sliced into blocks of n bytes (10k
-by default, decided at creation time.). Each block is encrypted and sealed using three AES256/CGM envelops, one inside
-the other, achieving both [confidentiality and authenticity](https://en.wikipedia.org/wiki/Authenticated_encryption).
-File wide integrity is warrantied by signing blocks and avoiding empty sparse blocks.
+It derives a file-wide key using scrypt with a provided string password, the file is sliced into blocks of n bytes
+(decided at creation time.). Each block is encrypted and sealed using three AES256/CGM envelops, one inside the other,
+achieving both [confidentiality and authenticity](https://en.wikipedia.org/wiki/Authenticated_encryption). File wide
+integrity is warrantied by signing blocks and avoiding empty sparse blocks.
 
+
+Example
+-------
+
+Snippet taken from [base_test.go](base_test.go). Check the test files for more examples, i.e. Seek, Truncate, Stats,
+etc.
+
+```
+    password := "this is a very long password nobody should know about"
+    BEBlockSize := 1024
+    data := crypto.RandBytes(BEBlockSize*10)
+
+    // create, write, close.
+    f, err := seof.CreateExt("encrypted.seof", password, BEBlockSize, 1)
+    assertNoErr(err, t)
+
+    n, err := f.Write(data)
+    assertNoErr(err, t)
+    if n != len(data) {
+        t.Fatal("did not write the whole buffer")
+    }
+    err = f.Close()
+    assertNoErr(err, t)
+
+    // open, read, close.
+    f, err = seof.OpenExt("encrypted.seof", password, 1)
+    assertNoErr(err, t)
+    readBuf := make([]byte, BEBlockSize*15) // bigger, purposely
+    n, err = f.Read(readBuf)
+    if n != len(data) {
+        t.Fatal("It did not read fully")
+    }
+    if !bytes.Equal(data, readBuf[0:n]) {
+        t.Fatal("What was read was not correct what was initially written")
+    }
+    err = f.Close()
+    assertNoErr(err, t)
+
+```
+
+CLI
+---
+
+```./seof                                                                                                                                                                                              ed@luxuriance
+Usage of ./seof: seof file utility
+
+  -e	encrypt (default: to decrypt)
+  -h	Show usage
+  -i	show seof encrypted file metadata
+  -p string
+    	password file
+  -s uint
+    	block size (default: 1024) (default 1024)
+
+NOTES:
+  - Password must to be provided in a file. Command line is not secure in a multi-user host.
+  - When encrypting, contents have to be provided via a pipe file, while decrypting output is always to stdout.
+
+Examples:
+  $ cat file | seof -e -p @password_file file.seof
+  $ seof -p @password_file file.seof > file
+  $ seof -i -p @password_file file.seof
+  ```
 
 Performance
 -----------
-As a developer doing any input-output software, you want to read and write multiple bytes and not individual ones, like
-the usual good practices predicates. Performance can not be expected to be as a non-encrypted file in a native
-filesystem. There is no performance degradation beyond the extra work done by the encryption primitives plus the extra
-ciphertext size.
+Performance can not be expected to be as a non-encrypted file in a native filesystem. There is no performance
+degradation beyond the extra work done by the encryption primitives plus the extra ciphertext size.
 
 Internally, `seof` holds multiple unencrypted blocks in memory, unbuffered reading and writing should not incur in any
-extra encryption work, and the typical sequential reads and writes should be performant (and will not incur in
-unnecessary encryption work or disk-input-output.). Because there is a limited number of blocks in memory at a time,
-random reads and writes outside the current buffers, will eventually trigger encryption primitives and
-disk-input-output (i.e. if a buffer content was modified, it will have to be encrypted and saved to disk, so it can be
-released from memory to make space for reading another block, having to decrypt it first.)
+extra encryption work, and the typical sequential reads and writes should be performant and will not incur in
+unnecessary encryption work or disk-input-output.
 
-Multiple random seek/read/write operations in a long enough file, will incur in performance penalisation as each time a
-new block comes into memory from the disk, it has to be read and unencrypted, and then disposed from memory, possibly
-encrypted and stored (if modified.). Encryption occurs in blocks, so changing just one byte would require encrypting and
-storing a whole block (i.e. 10kb). You want to tune the quantity of in-memory blocks when opening the file; the block
-size when creating it.
+Because there is a limited number of blocks in memory at a time, random reads and writes outside the current buffers,
+will trigger cache misses and 'expensive' encryption primitives (It does use AES which is hardware accelerated in many
+platforms.).
+
+Finally, encryption occurs in blocks, so changing just one byte would require encrypting and storing a whole block (i.e.
+1kb). You want to tune the quantity of in-memory blocks when opening the file; and the block size when creating it.
 
 Sequential reads/writes with an occasional seek should be fine. This is the typical user cases that is well satisfied
 with just one memory buffer, and a file block of 10kb.
+
 
 File Structure
 --------------
@@ -64,16 +122,18 @@ File Structure
 
 Syncronisation
 --------------
+Needs to be done.
 
 Attack vectors
 --------------
 
 - Each time a new block is written, a new nonce is generated, less than 2^32 write operations should be done in one
   particular file (and key.). Internally the implementation uses buffers and will save (and generate a new nonce) only
-  when the buffer needs to be flushed to disk (i.e. file closed, explicit sync or while flushing a modified buffer.)
+  when the buffer needs to be flushed to disk (i.e. file closed, sync or cache removal.)
   if your application does a lots of random seeks and writes (constantly invalidating the blocks cache, forcing flushing
   blocks to disk, generating new nonces for the new encrypted block) you might hit that upper limit. Block 0 holds a
   counter with the number of unique nonces ever generated (which equals to the number of written and encrypted blocks).
+  This value can be inspected using the `seof -i` CLI command.
 
 - The weakest encryption-link is the password string used for generating the 768 bits (96 bytes) of key. A string in
   latin characters should have to be approx. 150 characters in order to hold 768 bits of entropy. You have to keep that
@@ -96,4 +156,10 @@ Attack vectors
   allowing a "selective block zero-ing attack." and failing the integrity assurances.
 
   If you really need this assurance, let me know, the block-written-bitmap can be done.
-   
+
+TODO
+----
+
+- Multithreading soak test
+- Multithreading locking/safy
+- Release
