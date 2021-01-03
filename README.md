@@ -77,7 +77,7 @@ Usage of ./seof: seof file utility
 NOTES:
   - Password must be provided in a file. Command line is not secure in a multi-user host.
   - When encrypting, contents have to be provided via stdin pipe, decrypted output will be via stdout.
-  - Scrypt parameters target times in modern CPUs (2020): min>20ms, default>600ms, better>5s, max>9s
+  - Scrypt parameters target times in modern CPUs (2021): min>20ms, default>600ms, better>5s, max>9s
 
 Examples:
   $ cat file | seof -e -p @password_file file.seof
