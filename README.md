@@ -1,9 +1,9 @@
 # go seof: Simple Encrypted os.File
 
-Encrypted implementation and drop-in replacement of golang' [`os.File`](https://golang.org/pkg/os/#File), the file in
-stored will have 768 bits of encryption (Triple AES256 -yes- very silly and very secure). The resulting type can be used
-anywhere an [`os.File`](https://golang.org/pkg/os/#File) could be used. i.e. it can be both sequentially and randomly
-read and write, at any file position for any amount of bytes, can truncate, seek, stats, etc.
+Encrypted drop-in replacement of golang' [`os.File`](https://golang.org/pkg/os/#File), the file stored will have 768
+bits of encryption (Triple AES256 -yes- very silly and very secure). The resulting type can be used anywhere
+an [`os.File`](https://golang.org/pkg/os/#File) could be used. i.e. it can be both sequentially and randomly read and
+write, at any file position for any amount of bytes, can be truncate, seek, stats, etc.
 i.e. [`Read`](https://golang.org/pkg/os/#File.Read),
 [`ReadAt`](https://golang.org/pkg/os/#File.ReadAt),
 [`WriteAt`](https://golang.org/pkg/os/#File.WriteAt),
@@ -156,8 +156,8 @@ File Structure
 
 Testing
 -------
-Code is extensively tested and there is a soak test suite that tests multiple access patterns (i.e. misalligned reads,
-writes, etc).
+Code is extensively tested and there is a soak test suite that tests multiple access patterns (i.e. misaligned reads,
+writes, multi-blocks ops, sub-block ops, concurrency, etc).
 
 ```
 $ ./soaktest                                                                                                                                                                                          ed@luxuriance
@@ -265,26 +265,26 @@ SUCCESS!
 
 Syncronisation
 --------------
-Concurrency safety is achieved with a global lock, do not expect optimal concurrent performance. It is safe to use it in
-a concurrent environment. i.e. multiple goroutines using the same seof encrypted file.
+Concurrency safety is achieved with a global lock, do not expect optimal concurrent performance. It is safe to do
+operations on the same seof File object from multiple concurrent goroutines.
 
 Attack vectors
 --------------
 
 - Each time a new block is written, a new nonce is generated, less than 2^32 write operations should be done in one
-  particular file (and key.). Internally the implementation uses buffers and will save (and generate a new nonce) only
-  when the buffer needs to be flushed to disk (i.e. file closed, sync or cache eviction.)
+  particular file (and key.). Internally the implementation uses buffers and will store to disk only when the buffer
+  needs to be flushed to disk (i.e. file closed, sync or cache eviction.)
   if your application does a lots of random seeks and writes (constantly invalidating the blocks cache, forcing flushing
-  blocks to disk, generating new nonces for the new encrypted block) you might hit that upper limit. Block 0 holds a
-  counter with the number of unique nonces ever generated (which equals to the number of written and encrypted blocks).
-  This value can be inspected using the `seof -i` CLI command.
+  blocks to disk, generating new nonces for the new encrypted block) you might hit this upper limit. Special block 0
+  holds a counter with the number of unique nonces ever generated (which equals to the number of written and encrypted
+  blocks). This value can be inspected using the `seof -i` CLI command.
 
 - The weakest encryption-link is the password string used for generating the 768 bits (96 bytes) of key. A string in
   latin characters should have to be approx. 150 characters in order to hold 768 bits of entropy. You have to keep that
   in mind.
 
-- Blocks within the same file can not be shuffled or moved to another block as the AEAD seal holds its block number as
-  part of its signed plaintext. This is verified.
+- Blocks within the same file can not be shuffled or moved to another block as the AEAD seals hold the block number in
+  the signed plaintext. This is verified.
 
 - Most filesystems can handle [sparse files](https://en.wikipedia.org/wiki/Sparse_file). seof supports sparse files, but
   read of never written/zeroed blocks is disabled by default to avoid a possible attack (see: XXX flag). User can create
