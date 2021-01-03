@@ -10,10 +10,11 @@ i.e. [`Read`](https://golang.org/pkg/os/#File.Read),
 [`Seek`](https://golang.org/pkg/os/#File.Seek),
 [`Truncate`](https://golang.org/pkg/os/#File.Truncate), etc.
 
-It derives a file-wide key using scrypt with a provided string password, the file is sliced into blocks of n bytes
-(decided at creation time.). Each block is encrypted and sealed using three AES256/CGM envelops, one inside the other,
-achieving both [confidentiality and authenticity](https://en.wikipedia.org/wiki/Authenticated_encryption). File wide
-integrity is warrantied by signing blocks and avoiding empty sparse blocks.
+It derives a file-wide key using [scrypt](http://www.tarsnap.com/scrypt.html) with a provided string password, the file
+is sliced into blocks of n bytes (decided at creation time.). Each block is encrypted and sealed using three AES256/CGM
+envelops, one inside the other, achieving
+both [confidentiality and authenticity](https://en.wikipedia.org/wiki/Authenticated_encryption). File wide integrity is
+warrantied by signing blocks and avoiding empty sparse blocks.
 
 
 Example
@@ -104,22 +105,12 @@ Encrypted Block Size: 1112 bytes
 
 Performance
 -----------
-Performance can not be expected to be as a non-encrypted file in a native filesystem. There is no performance
-degradation beyond the extra work done by the encryption primitives plus the extra ciphertext size.
-
-Internally, `seof` holds multiple unencrypted blocks in memory, unbuffered reading and writing should not incur in any
-extra encryption work, and the typical sequential reads and writes should be performant and will not incur in
-unnecessary encryption work or disk-input-output.
-
-Because there is a limited number of blocks in memory at a time, random reads and writes outside the current buffers,
-will trigger cache misses and 'expensive' encryption primitives (It does use AES which is hardware accelerated in many
-platforms.).
+There is no performance overhead beyond the encryption primitives. Internally, `seof` holds multiple unencrypted blocks
+in memory, unbuffered reading and writing should not incur in any extra encryption work, and the typical sequential
+reads and writes should be performant independently of the access pattern.
 
 Finally, encryption occurs in blocks, so changing just one byte would require encrypting and storing a whole block (i.e.
-1kb). You want to tune the quantity of in-memory blocks when opening the file; and the block size when creating it.
-
-Sequential reads/writes with an occasional seek should be fine. This is the typical user cases that is well satisfied
-with just one memory buffer, and a file block of 10kb.
+10kb). You want to tune the quantity of in-memory blocks when opening the file; and the block size when creating it.
 
 ### CLI sequential encryption/decryption performance
 
