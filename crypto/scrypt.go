@@ -12,20 +12,20 @@ type SCryptParameters struct {
 	P uint32
 }
 
-var CurrentSCryptParameters = SCryptParameters{ //>250ms
-	N: 65536 * 2,
-	R: 4 * 2,
-	P: 1,
+var CurrentSCryptParameters = SCryptParameters{ //>300ms
+	N: 1 << 16,
+	R: 1 << 4,
+	P: 1 << 0,
 }
 
-var MaxSCryptParameters = SCryptParameters{ //>4s
-	N: 65536 * 8,
-	R: 4 * 8,
-	P: 1,
+var MaxSCryptParameters = SCryptParameters{ //>9s
+	N: 1 << 19,
+	R: 1 << 6,
+	P: 1 << 0,
 }
 
 var MinSCryptParameters = SCryptParameters{ //21ms
-	N: 65536 / 2,
-	R: 4 / 2,
-	P: 1,
+	N: 1 << 14,
+	R: 1 << 2,
+	P: 1 << 0,
 }
