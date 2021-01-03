@@ -17,9 +17,11 @@ var passwordFile string
 var doHelp bool
 var doInfo bool
 var blockSize uint
+var scryptParamsCli string
 
 func doArgsParsing() bool {
 	flag.BoolVar(&doEncrypt, "e", false, "encrypt (default: to decrypt)")
+	flag.StringVar(&scryptParamsCli, "scrypt", "default", "Encrypting Scrypt parameters: min, default, better, max")
 	flag.BoolVar(&doInfo, "i", false, "show seof encrypted file metadata")
 	flag.StringVar(&passwordFile, "p", "", "password file")
 	flag.UintVar(&blockSize, "s", 1024, "block size")
@@ -32,6 +34,7 @@ func doArgsParsing() bool {
 NOTES: 
   - Password must be provided in a file. Command line is not secure in a multi-user host.
   - When encrypting, contents have to be provided via stdin pipe, decrypted output will be via stdout.
+  - Scrypt parameters target times in modern CPUs (2020): min>20ms, default>600ms, better>5s, max>9s
 
 Examples: 
   $ cat file | seof -e -p @password_file file.seof
@@ -75,12 +78,30 @@ func main() {
 		os.Exit(-1)
 	}
 
+	var scryptParams crypto.SCryptParameters
+	if doEncrypt {
+		switch scryptParamsCli {
+		case "min":
+			scryptParams = crypto.MinSCryptParameters
+		case "default":
+			scryptParams = crypto.RecommendedSCryptParameters
+		case "better":
+			scryptParams = crypto.BetterSCryptParameters
+		case "max":
+			scryptParams = crypto.MaxSCryptParameters
+		default:
+			fmt.Println("SCrypt parameter not recognised:", scryptParamsCli)
+			os.Exit(-1)
+		}
+
+	}
+
 	filename := os.Args[len(os.Args)-1]
 	var ef *seof.File
 	if doInfo || !doEncrypt {
 		ef, err = seof.OpenExt(filename, password, 10)
 	} else {
-		ef, err = seof.CreateExt(filename, password,  crypto.RecommendedSCryptParameters, int(blockSize), 10)
+		ef, err = seof.CreateExt(filename, password, scryptParams, int(blockSize), 10)
 	}
 	assertNoError(err, "Failed to open file: "+filename+" -- %v")
 
