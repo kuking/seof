@@ -118,7 +118,20 @@ func main() {
 		fmt.Printf("  Content Block Size: %v bytes\n", stats.BEBlockSize())
 		fmt.Printf("Encrypted Block Size: %v bytes\n", stats.DiskBlockSize())
 		fmt.Printf(" Total Blocks Writen: %v (= unique nonces)\n", stats.BlocksWritten())
+		var scryptLevel string
 		salt, n, r, p := stats.SCryptParameters()
+		if n == crypto.MinSCryptParameters.N && r == crypto.MinSCryptParameters.R && p == crypto.MinSCryptParameters.P {
+			scryptLevel = "Minimal (>20ms)"
+		} else if n == crypto.MaxSCryptParameters.N && r == crypto.MaxSCryptParameters.R && p == crypto.MaxSCryptParameters.P {
+			scryptLevel = "Maximum (>9s)"
+		} else if n == crypto.RecommendedSCryptParameters.N && r == crypto.RecommendedSCryptParameters.R && p == crypto.RecommendedSCryptParameters.P {
+			scryptLevel = "Recommended (>600ms)"
+		} else if n == crypto.BetterSCryptParameters.N && r == crypto.BetterSCryptParameters.R && p == crypto.BetterSCryptParameters.P {
+			scryptLevel = "Better (>5s)"
+		} else {
+			scryptLevel = "Unknown preset. "
+		}
+		fmt.Printf("       SCrypt Preset: %v\n", scryptLevel)
 		fmt.Printf("   SCrypt Parameters: N=%v, R=%v, P=%v, keyLength=96, salt=\n", n, r, p)
 		hexa := hex.EncodeToString(salt)
 		fmt.Printf("%69v\n%69v\n%69v\n", hexa[:64], hexa[64:128], hexa[128:])

@@ -88,22 +88,21 @@ Examples:
 Inspecting metadata for an encrypted file:
 
 ```
-
-$  » ./seof -p password -i img.seof                                                                                                                                                                      ed@luxuriance
-           File Name: img.seof
-   Modification Time: 2021-01-02 01:27:38.753496583 +0000 GMT
+$ /seof -p password -i file.seof                                                                                                                                                                     ed@luxuriance
+           File Name: file.seof
+   Modification Time: 2021-01-03 13:53:55.698769333 +0000 GMT
            File Mode: -rw-r--r--
-        Content Size: 8787066880 bytes
-   File Size On Disk: 9542206680 bytes
+        Content Size: 247086468 bytes
+   File Size On Disk: 268321756 bytes
  Encryption Overhead: 8.59%
   Content Block Size: 1024 bytes
 Encrypted Block Size: 1112 bytes
- Total Blocks Writen: 8581122 (= unique nonces)
-   SCrypt Parameters: N=131072, R=8, P=1, keyLength=96, salt=
-     089ce2d0fb75b4d6e969ebafe63e6b01cb544e66ff0b6373d90d570e08993d25
-     9c38a3dea71e7dad2f87a0b3e0bad37be84635aa033112b996538da8286d754b
-     2af89284a65b9c5c6b14023f4fa53dac2fbdf6ab1bf9ae5bd8af94d5ef4d5c9f
-     
+ Total Blocks Writen: 241298 (= unique nonces)
+       SCrypt Preset: Maximum (>9s)
+   SCrypt Parameters: N=524288, R=64, P=1, keyLength=96, salt=
+     e036b1c8443913266fa514404dc56fa2603e5215136dfe7b83cb2149eb924dc1
+     40cc023e94fcde57b4ca095e81b3ab94331a9defbb03187b4a1761ee37179402
+     f206d9f768034a9cb7d42e9355f55876c4ffb8710da32d56c6b384101a3d13f4
   ```
 
 Performance
