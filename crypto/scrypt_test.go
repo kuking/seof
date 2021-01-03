@@ -14,7 +14,7 @@ func TestScryptParameters(t *testing.T) {
 	count := 3
 	for i := 0; i < count; i++ {
 		_, err := scrypt.Key(password, salt,
-			int(CurrentSCryptParameters.N), int(CurrentSCryptParameters.R), int(CurrentSCryptParameters.P), keyLen)
+			int(RecommendedSCryptParameters.N), int(RecommendedSCryptParameters.R), int(RecommendedSCryptParameters.P), keyLen)
 		if err != nil {
 			t.Error(err)
 		}

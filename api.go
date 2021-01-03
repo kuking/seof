@@ -266,7 +266,7 @@ func OpenExt(name string, password string, memoryBuffers int) (*File, error) {
 	return &file, nil
 }
 
-func CreateExt(name string, password string, BEBlockSize int, memoryBuffers int) (*File, error) {
+func CreateExt(name string, password string, scryptParams crypto.SCryptParameters, BEBlockSize int, memoryBuffers int) (*File, error) {
 	if len(password) < 20 {
 		return nil, errors.New("password should be at least 20 characters long")
 	}
@@ -284,9 +284,9 @@ func CreateExt(name string, password string, BEBlockSize int, memoryBuffers int)
 	header := Header{
 		Magic:         HeaderMagic,
 		ScriptSalt:    [96]byte{},
-		ScriptN:       crypto.CurrentSCryptParameters.N,
-		ScriptR:       crypto.CurrentSCryptParameters.R,
-		ScriptP:       crypto.CurrentSCryptParameters.P,
+		ScriptN:       scryptParams.N,
+		ScriptR:       scryptParams.R,
+		ScriptP:       scryptParams.P,
 		DiskBlockSize: 0,
 		TailOfZeros:   [8]byte{},
 	}

@@ -17,7 +17,7 @@ func Test_HappySequentialWriteRead(t *testing.T) {
 	data := crypto.RandBytes(BEBlockSize*3 + BEBlockSize/3)
 
 	// create, write, close.
-	f, err := CreateExt(tempFile.Name(), password, BEBlockSize, 1)
+	f, err := CreateExt(tempFile.Name(), password, crypto.MinSCryptParameters, BEBlockSize, 1)
 	assertNoErr(err, t)
 	n, err := f.Write(data)
 	assertNoErr(err, t)
@@ -48,7 +48,7 @@ func Test_NoPlainTextInDisk(t *testing.T) {
 	defer deferredCleanup(tempFile)
 
 	data := crypto.RandBytes(128)
-	f, _ := CreateExt(tempFile.Name(), password, BEBlockSize, 1)
+	f, _ := CreateExt(tempFile.Name(), password, crypto.MinSCryptParameters, BEBlockSize, 1)
 	for i := 0; i < 100; i++ {
 		_, _ = f.Write(data)
 	}
@@ -68,7 +68,7 @@ func Test_ChunkedBigWrite(t *testing.T) {
 	data := crypto.RandBytes(256)
 
 	// create, write, close.
-	f, _ := CreateExt(tempFile.Name(), password, BEBlockSize, 1)
+	f, _ := CreateExt(tempFile.Name(), password, crypto.MinSCryptParameters, BEBlockSize, 1)
 
 	for i := 0; i < 20; i++ {
 		_, _ = f.Write(data)
@@ -98,7 +98,7 @@ func Test_AnythingOnClosedFileFails(t *testing.T) {
 	tempFile, _ := ioutil.TempFile(os.TempDir(), "lala")
 	defer deferredCleanup(tempFile)
 
-	f, err := CreateExt(tempFile.Name(), password, BEBlockSize, 1)
+	f, err := CreateExt(tempFile.Name(), password, crypto.MinSCryptParameters, BEBlockSize, 1)
 	assertNoErr(err, t)
 
 	err = f.Close()
@@ -148,7 +148,7 @@ func Test_ClosingAnErroredSoefIsOK(t *testing.T) {
 	tempFile, _ := ioutil.TempFile(os.TempDir(), "lala")
 	defer deferredCleanup(tempFile)
 
-	f, err := CreateExt(tempFile.Name(), password, BEBlockSize, 1)
+	f, err := CreateExt(tempFile.Name(), password, crypto.MinSCryptParameters, BEBlockSize, 1)
 	assertNoErr(err, t)
 	for i := 0; i < 1024; i++ { // so it is bigger than 1 buffer
 		_, err = f.WriteString("HELLO")
@@ -174,7 +174,7 @@ func Test_ClosingAnErroredSoefIsOK(t *testing.T) {
 func TestFile_Name(t *testing.T) {
 	tempFile, _ := ioutil.TempFile(os.TempDir(), "lala")
 	defer deferredCleanup(tempFile)
-	f, _ := CreateExt(tempFile.Name(), password, BEBlockSize, 1)
+	f, _ := CreateExt(tempFile.Name(), password, crypto.MinSCryptParameters, BEBlockSize, 1)
 
 	if f.Name() != tempFile.Name() {
 		t.Fatal()
@@ -186,7 +186,7 @@ func TestFile_seek(t *testing.T) {
 	tempFile, _ := ioutil.TempFile(os.TempDir(), "lala")
 	defer deferredCleanup(tempFile)
 
-	f, err := CreateExt(tempFile.Name(), password, BEBlockSize, 10) // 10 is important to buffers are left in memory
+	f, err := CreateExt(tempFile.Name(), password, crypto.MinSCryptParameters, BEBlockSize, 10) // 10 is important to buffers are left in memory
 	assertNoErr(err, t)
 	for i := 0; i < 1024; i++ { // so it is bigger than 1 buffer
 		_, err = f.WriteString("HELLO")
@@ -236,7 +236,7 @@ func TestFile_Truncate(t *testing.T) {
 	tempFile, _ := ioutil.TempFile(os.TempDir(), "lala")
 	defer deferredCleanup(tempFile)
 
-	f, err := CreateExt(tempFile.Name(), password, BEBlockSize, 10) // 10 is important to buffers are left in memory
+	f, err := CreateExt(tempFile.Name(), password, crypto.MinSCryptParameters, BEBlockSize, 10) // 10 is important to buffers are left in memory
 	assertNoErr(err, t)
 	for i := 0; i < 1024; i++ { // so it is bigger than 1 buffer
 		_, err = f.WriteString("HELLO")
@@ -297,7 +297,7 @@ func TestFile_Stat(t *testing.T) {
 	tempFile, _ := ioutil.TempFile(os.TempDir(), "lala")
 	defer deferredCleanup(tempFile)
 
-	f, err := CreateExt(tempFile.Name(), password, BEBlockSize, 10) // 10 is important to buffers are left in memory
+	f, err := CreateExt(tempFile.Name(), password, crypto.MinSCryptParameters, BEBlockSize, 10) // 10 is important to buffers are left in memory
 	assertNoErr(err, t)
 	for i := 0; i < 1024; i++ { // so it is bigger than 1 buffer
 		_, err = f.WriteString("HELLO")
@@ -321,9 +321,9 @@ func TestFile_Stat(t *testing.T) {
 
 	salt, n, r, p := stats.SCryptParameters()
 	if len(salt) != 96 ||
-		crypto.CurrentSCryptParameters.N != n ||
-		crypto.CurrentSCryptParameters.P != p ||
-		crypto.CurrentSCryptParameters.R != r {
+		crypto.MinSCryptParameters.N != n ||
+		crypto.MinSCryptParameters.P != p ||
+		crypto.MinSCryptParameters.R != r {
 		t.Fatal()
 	}
 

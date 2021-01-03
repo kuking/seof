@@ -44,7 +44,7 @@ func main() {
 	fmt.Printf("1. Creating 2 x %vMB files: native.soak, seof.soak\n", wholeSize/1024/1024)
 	nat, err = os.Create("native.soak")
 	assertErr(err, "creating native.soak")
-	enc, err = seof.CreateExt("seof.soak", password, seofBlockSize, 5)
+	enc, err = seof.CreateExt("seof.soak", password, crypto.RecommendedSCryptParameters, seofBlockSize, 5)
 	assertErr(err, "creating seof.soak")
 
 	fmt.Printf("2. Writing %vMB of [0x00, 0x01, 0x02, ... 0xff] in: native.soak, seof.soak\n", wholeSize/1024/1024)

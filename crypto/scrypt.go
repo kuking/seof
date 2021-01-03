@@ -12,7 +12,7 @@ type SCryptParameters struct {
 	P uint32
 }
 
-var CurrentSCryptParameters = SCryptParameters{ //>300ms
+var RecommendedSCryptParameters = SCryptParameters{ //>300ms
 	N: 1 << 16,
 	R: 1 << 4,
 	P: 1 << 0,

@@ -1,6 +1,7 @@
 package seof
 
 import (
+	"github.com/kuking/seof/crypto"
 	"os"
 	"testing"
 )
@@ -24,17 +25,17 @@ func TestNoUsableMethods(t *testing.T) {
 
 func TestCreateExt_InvalidArguments(t *testing.T) {
 	for _, password := range []string{"", "1234567890", "1234567890123456789"} {
-		if _, err := CreateExt("file", password, BEBlockSize, 1); err == nil {
+		if _, err := CreateExt("file", password, crypto.MinSCryptParameters, BEBlockSize, 1); err == nil {
 			t.Fatal("password should be at least 20 characters long")
 		}
 	}
 	for _, blockSize := range []int{-123, -1, 0, 10, 1023, 128*1024 + 1, 256 * 1024} {
-		if _, err := CreateExt("file", password, blockSize, 1); err == nil {
+		if _, err := CreateExt("file", password, crypto.MinSCryptParameters, blockSize, 1); err == nil {
 			t.Fatal("block size should be: 1kb<=block_size<128kb")
 		}
 	}
 	for _, memBuffers := range []int{-123, -1, 0, 129, 65535} {
-		if _, err := CreateExt("file", password, BEBlockSize, memBuffers); err == nil {
+		if _, err := CreateExt("file", password, crypto.MinSCryptParameters, BEBlockSize, memBuffers); err == nil {
 			t.Fatal("memory buffers be: 1<=buffers<128")
 		}
 	}

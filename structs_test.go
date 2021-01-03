@@ -11,9 +11,9 @@ func TestHeaderStruct(t *testing.T) {
 	h := Header{
 		Magic:         0xdeadbeef,
 		ScriptSalt:    [96]byte{},
-		ScriptN:       crypto.CurrentSCryptParameters.N,
-		ScriptR:       crypto.CurrentSCryptParameters.R,
-		ScriptP:       crypto.CurrentSCryptParameters.P,
+		ScriptN:       crypto.RecommendedSCryptParameters.N,
+		ScriptR:       crypto.RecommendedSCryptParameters.R,
+		ScriptP:       crypto.RecommendedSCryptParameters.P,
 		DiskBlockSize: 1024,
 		TailOfZeros:   [8]byte{},
 	}
@@ -137,9 +137,9 @@ func givenValidHeader() Header {
 	h := Header{
 		Magic:         HeaderMagic,
 		ScriptSalt:    [96]byte{},
-		ScriptN:       crypto.CurrentSCryptParameters.N,
-		ScriptR:       crypto.CurrentSCryptParameters.R,
-		ScriptP:       crypto.CurrentSCryptParameters.P,
+		ScriptN:       crypto.RecommendedSCryptParameters.N,
+		ScriptR:       crypto.RecommendedSCryptParameters.R,
+		ScriptP:       crypto.RecommendedSCryptParameters.P,
 		DiskBlockSize: 1524,
 		TailOfZeros:   [8]byte{},
 	}

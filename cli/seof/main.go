@@ -6,6 +6,7 @@ import (
 	"fmt"
 	pwe "github.com/kuking/go-pwentropy"
 	"github.com/kuking/seof"
+	"github.com/kuking/seof/crypto"
 	"io"
 	"io/ioutil"
 	"os"
@@ -79,7 +80,7 @@ func main() {
 	if doInfo || !doEncrypt {
 		ef, err = seof.OpenExt(filename, password, 10)
 	} else {
-		ef, err = seof.CreateExt(filename, password, int(blockSize), 10)
+		ef, err = seof.CreateExt(filename, password,  crypto.RecommendedSCryptParameters, int(blockSize), 10)
 	}
 	assertNoError(err, "Failed to open file: "+filename+" -- %v")
 
