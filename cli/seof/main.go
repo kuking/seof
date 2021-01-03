@@ -129,7 +129,7 @@ func main() {
 		} else if n == crypto.BetterSCryptParameters.N && r == crypto.BetterSCryptParameters.R && p == crypto.BetterSCryptParameters.P {
 			scryptLevel = "Better (>5s)"
 		} else {
-			scryptLevel = "Unknown preset. "
+			scryptLevel = "Unknown"
 		}
 		fmt.Printf("       SCrypt Preset: %v\n", scryptLevel)
 		fmt.Printf("   SCrypt Parameters: N=%v, R=%v, P=%v, keyLength=96, salt=\n", n, r, p)
