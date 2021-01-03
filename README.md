@@ -71,10 +71,13 @@ Usage of ./seof: seof file utility
     	password file
   -s uint
     	block size (default: 1024)
+  -scrypt string
+    	Encrypting Scrypt parameters: min, default, better, max (default "default")
 
 NOTES:
   - Password must be provided in a file. Command line is not secure in a multi-user host.
   - When encrypting, contents have to be provided via stdin pipe, decrypted output will be via stdout.
+  - Scrypt parameters target times in modern CPUs (2020): min>20ms, default>600ms, better>5s, max>9s
 
 Examples:
   $ cat file | seof -e -p @password_file file.seof
@@ -291,6 +294,19 @@ Attack vectors
   allowing a "selective block zero-ing attack." and failing the integrity assurances.
 
   If you really need this assurance, let me know, the block-written-bitmap can be done.
+
+USAGE
+-----
+
+- Storing passwords and secrets using auto-generated system+app+user derived key
+- Encrypting distributable assets and you need random access reads. (i.e. reading a ZIP File)
+- Enhancing encryption in traditional file formats (i.e.
+  golang' [zip reader](https://golang.org/pkg/archive/zip/#NewReader))
+- Secure long-term storing of files (some people might want to use GPG as it is "proven" to work)
+- Keeping usage data away from user's eyes
+- Random access on *very* big files, seof supports 64bits files. i.e. efficient and fast random access of >4gb files.
+
+- Any of the above and you really want to make it future proof, i.e. scenario where AES is degraded.
 
 TODO
 ----
