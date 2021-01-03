@@ -11,7 +11,7 @@ func TestScryptParameters(t *testing.T) {
 	password := []byte("some password")
 	salt := RandBytes(keyLen)
 	start := time.Now()
-	count := 3
+	count := 2
 	for i := 0; i < count; i++ {
 		_, err := scrypt.Key(password, salt,
 			int(RecommendedSCryptParameters.N), int(RecommendedSCryptParameters.R), int(RecommendedSCryptParameters.P), keyLen)
@@ -22,7 +22,7 @@ func TestScryptParameters(t *testing.T) {
 	duration := time.Now().Sub(start)
 	scryptMs := duration.Milliseconds() / int64(count)
 	//fmt.Println("Scrypt parameters taking on average in this CPU:", scryptMs, "ms")
-	if scryptMs < 250 {
-		t.Errorf("Scrypt should take at least 250ms, it took %vms -- Time to increase its parameters", scryptMs)
+	if scryptMs < 600 {
+		t.Errorf("Scrypt should take at least 600ms, it took %vms -- Time to increase its parameters", scryptMs)
 	}
 }
