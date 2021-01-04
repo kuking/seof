@@ -16,5 +16,5 @@ coverage:
 	go tool cover -func=coverage.out
 
 release:
-	go build -o seof		cli/seof/main.go
+	go build -o seof		cli/seof/seof.go
 	go build -o soaktest	cli/soaktest/main.go
