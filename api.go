@@ -220,8 +220,8 @@ func OpenFile(_ string, _ int, _ os.FileMode) (*File, error) {
 }
 
 func OpenExt(name string, password string, memoryBuffers int) (*File, error) {
-	if memoryBuffers < 1 || memoryBuffers > 128 {
-		return nil, errors.New("memory buffers can be between 1 and 128")
+	if memoryBuffers < 1 || memoryBuffers > 1024 {
+		return nil, errors.New("memory buffers can be between 1 and 1024")
 	}
 
 	var err error

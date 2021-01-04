@@ -40,3 +40,12 @@ func TestCreateExt_InvalidArguments(t *testing.T) {
 		}
 	}
 }
+
+func TestOpenExt_InvalidArguments(t *testing.T) {
+	for _, buffers := range []int{-123, -1, 0, 1025, 128 * 1024} {
+		_, err := OpenExt("file", password, buffers)
+		if err == nil {
+			t.Fatal("memory buffers should be checked for bounds")
+		}
+	}
+}
