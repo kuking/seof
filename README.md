@@ -16,7 +16,7 @@ envelops, one inside the other, achieving
 both [confidentiality and authenticity](https://en.wikipedia.org/wiki/Authenticated_encryption). File wide integrity is
 warrantied by signing blocks and avoiding empty sparse blocks.
 
-Current Version: [1.0.0](https://github.com/kuking/seof/tree/1.0.0), changelog [here](CHANGELOG.md).
+Current Version: [v1.0.0](https://github.com/kuking/seof/tree/v1.0.0), changelog [here](CHANGELOG.md).
 
 Example
 -------
