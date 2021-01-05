@@ -16,6 +16,7 @@ envelops, one inside the other, achieving
 both [confidentiality and authenticity](https://en.wikipedia.org/wiki/Authenticated_encryption). File wide integrity is
 warrantied by signing blocks and avoiding empty sparse blocks.
 
+[Changelog here](CHANGELOG.md)
 
 Example
 -------
@@ -310,5 +311,4 @@ USAGE
 TODO
 ----
 
-- Release
 - Flag to allow reading empty holes in sparse files as no errors
