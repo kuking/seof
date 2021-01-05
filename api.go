@@ -408,10 +408,10 @@ func (f *File) writeLocked(b []byte) (n int, err error) {
 func (f *File) WriteAt(b []byte, off int64) (n int, err error) {
 	f.mutex.Lock()
 	defer f.mutex.Unlock()
-	if off < 0 { //XXX: can this be relative?
-		return 0, errors.New("negative offset not allowed")
+	_, err = f.seekLocked(off, 0)
+	if err != nil {
+		return
 	}
-	f.cursor = off
 	return f.writeLocked(b)
 }
 
@@ -476,10 +476,10 @@ func (f *File) readLocked(b []byte) (n int, err error) {
 func (f *File) ReadAt(b []byte, off int64) (n int, err error) {
 	f.mutex.Lock()
 	defer f.mutex.Unlock()
-	if off < 0 { //XXX: can this be relative?
-		return 0, errors.New("negative offset not allowed")
+	_, err = f.seekLocked(off, 0)
+	if err != nil {
+		return
 	}
-	f.cursor = off
 	return f.readLocked(b)
 }
 
@@ -490,27 +490,28 @@ func (f *File) ReadAt(b []byte, off int64) (n int, err error) {
 func (f *File) Seek(offset int64, whence int) (ret int64, err error) {
 	f.mutex.Lock()
 	defer f.mutex.Unlock()
+	return f.seekLocked(offset, whence)
+}
+
+func (f *File) seekLocked(offset int64, whence int) (ret int64, err error) {
 	if f.pendingErr != nil {
 		return 0, *f.pendingErr
 	}
 	newCursor := int64(0)
-	if whence == 0 {
-		if offset < 0 { //XXX: can this be relative?
-			return 0, errors.New("negative offset not allowed")
-		}
+
+	switch whence {
+	case 0: // absolute
 		newCursor = offset
-	} else if whence == 1 {
+	case 1: // relative
 		newCursor = f.cursor + offset
-	} else if whence == 2 {
+	case 2: // from EoF
 		newCursor = int64(f.blockZero.BEncFileSize) - offset
-	} else {
+	default:
 		return 0, errors.New("invalid whence value")
 	}
+
 	if newCursor < 0 {
 		return 0, errors.New("absolute negative offset position not allowed")
-	}
-	if newCursor > int64(f.blockZero.BEncFileSize) {
-		newCursor = int64(f.blockZero.BEncFileSize)
 	}
 	f.cursor = newCursor
 	return f.cursor, nil

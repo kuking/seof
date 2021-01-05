@@ -2,9 +2,11 @@ package seof
 
 import (
 	"bytes"
+	"encoding/binary"
 	"encoding/hex"
 	"fmt"
 	"github.com/kuking/seof/crypto"
+	"io"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -182,7 +184,7 @@ func TestFile_Name(t *testing.T) {
 	_ = f.Close()
 }
 
-func TestFile_seek(t *testing.T) {
+func TestFile_Seek(t *testing.T) {
 	tempFile, _ := ioutil.TempFile(os.TempDir(), "lala")
 	defer deferredCleanup(tempFile)
 
@@ -212,7 +214,7 @@ func TestFile_seek(t *testing.T) {
 	if n != (5*1024)-75 || n != f.cursor {
 		t.Fatal()
 	}
-	n, err = f.Seek(1000000000000, 0)
+	n, err = f.Seek(1_000_000_000_000, 0)
 	assertNoErr(err, t)
 	if n != f.cursor {
 		t.Fatal()
@@ -226,7 +228,7 @@ func TestFile_seek(t *testing.T) {
 	if err == nil {
 		t.Fatal()
 	}
-	n, err = f.Seek(-100000000, 1)
+	n, err = f.Seek(-1_000_000_000_001, 1)
 	if err == nil {
 		t.Fatal()
 	}
@@ -293,6 +295,53 @@ func TestFile_Truncate(t *testing.T) {
 	}
 }
 
+func TestFile_SparseFile(t *testing.T) {
+	tempFile, _ := ioutil.TempFile(os.TempDir(), "lala")
+	defer deferredCleanup(tempFile)
+
+	f, err := CreateExt(tempFile.Name(), password, crypto.MinSCryptParameters, BEBlockSize, 10) // 10 is important to buffers are left in memory
+	assertNoErr(err, t)
+
+	// seeking far away, reading and writting ... works
+	s, err := f.Seek(1_000_000_000, 0)
+	assertNoErr(err, t)
+	if s != 1_000_000_000 {
+		t.Fatal()
+	}
+	n, err := f.WriteString("Hello")
+	assertNoErr(err, t)
+	if n != 5 {
+		t.Fatal()
+	}
+	s, err = f.Seek(1_000_000_000, 0)
+	assertNoErr(err, t)
+	if s != 1_000_000_000 {
+		t.Fatal()
+	}
+	b := make([]byte, 100)
+	n, err = f.Read(b)
+	assertNoErr(err, t)
+	if n != 5 {
+		t.Fatal()
+	}
+	err = f.Sync()
+	assertNoErr(err, t)
+
+	// seeking in the middle, where there is no data, should fail with crypto
+	s, err = f.Seek(-500_000_000, 1)
+	assertNoErr(err, t)
+	if s != 500_000_005 {
+		t.Fatal()
+	}
+	n, err = f.Read(b)
+	if n != 0 || err == nil {
+		t.Fatal()
+	}
+	if err.Error() != "cipher: message authentication failed" {
+		t.Fatal()
+	}
+}
+
 func TestFile_Stat(t *testing.T) {
 	tempFile, _ := ioutil.TempFile(os.TempDir(), "lala")
 	defer deferredCleanup(tempFile)
@@ -332,6 +381,69 @@ func TestFile_Stat(t *testing.T) {
 
 	// || tempFileStats.Sys() != stats.Sys() can't be compared
 	if tempFileStats.Mode() != stats.Mode() || tempFileStats.ModTime() != stats.ModTime() {
+		t.Fatal()
+	}
+}
+
+func TestOpenExt_EmptyFile(t *testing.T) {
+	tempFile, _ := ioutil.TempFile(os.TempDir(), "lala")
+	defer deferredCleanup(tempFile)
+
+	f, err := os.Create(tempFile.Name())
+	assertNoErr(err, t)
+	assertNoErr(f.Close(), t)
+
+	_, err = OpenExt(tempFile.Name(), password, 1)
+	if err != io.EOF {
+		t.Fatal()
+	}
+}
+
+func TestOpenExt_InvalidHeader(t *testing.T) {
+	tempFile, _ := ioutil.TempFile(os.TempDir(), "lala")
+	defer deferredCleanup(tempFile)
+
+	header := Header{
+		Magic:         HeaderMagic,
+		ScriptSalt:    [96]byte{},
+		ScriptN:       crypto.MinSCryptParameters.N,
+		ScriptR:       crypto.MinSCryptParameters.R,
+		ScriptP:       crypto.MinSCryptParameters.P,
+		DiskBlockSize: 0,
+		TailOfZeros:   [8]byte{},
+	}
+	f, err := os.Create(tempFile.Name())
+	assertNoErr(err, t)
+	binary.Write(f, binary.LittleEndian, header)
+	f.Close()
+
+	_, err = OpenExt(tempFile.Name(), password, 1)
+	if err.Error() != "header: invalid disk_block_size" {
+		t.Fatal()
+	}
+}
+
+func TestOpenExt_ValidHeader_TruncatedFile(t *testing.T) {
+	tempFile, _ := ioutil.TempFile(os.TempDir(), "lala")
+	defer deferredCleanup(tempFile)
+
+	header := Header{
+		Magic:         HeaderMagic,
+		ScriptSalt:    [96]byte{},
+		ScriptN:       crypto.MinSCryptParameters.N,
+		ScriptR:       crypto.MinSCryptParameters.R,
+		ScriptP:       crypto.MinSCryptParameters.P,
+		DiskBlockSize: 1211,
+		TailOfZeros:   [8]byte{},
+	}
+	header.ScriptSalt[0] = 1
+	f, err := os.Create(tempFile.Name())
+	assertNoErr(err, t)
+	binary.Write(f, binary.LittleEndian, header)
+	f.Close()
+
+	_, err = OpenExt(tempFile.Name(), password, 1)
+	if err != io.EOF {
 		t.Fatal()
 	}
 }

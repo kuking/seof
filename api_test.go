@@ -39,6 +39,10 @@ func TestCreateExt_InvalidArguments(t *testing.T) {
 			t.Fatal("memory buffers be: 1<=buffers<128")
 		}
 	}
+	_, err := CreateExt("", password, crypto.MinSCryptParameters, BEBlockSize, 1)
+	if err == nil {
+		t.Fatal("invalid filename should fail")
+	}
 }
 
 func TestOpenExt_InvalidArguments(t *testing.T) {
@@ -47,5 +51,9 @@ func TestOpenExt_InvalidArguments(t *testing.T) {
 		if err == nil {
 			t.Fatal("memory buffers should be checked for bounds")
 		}
+	}
+	_, err := OpenExt("", password, 1)
+	if err == nil {
+		t.Fatal("invalid filename should fail")
 	}
 }
