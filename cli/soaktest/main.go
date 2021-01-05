@@ -38,6 +38,11 @@ func main() {
 
 	fmt.Println(`soaktest: seof soak test, creates a native file and a seof encrypted file.
   applies many different IO operations equally to both files and verifies both behave similar. You want a fast disk (NVMe).`)
+
+	if len(os.Args) == 2 && os.Args[1] == "quick" {
+		fmt.Println("\nNOTE: Running a quick test as per run parameters.")
+		wholeSize = 1024 * 1024
+	}
 	fmt.Println()
 
 	var err error
