@@ -566,7 +566,7 @@ func (f *File) Truncate(size int64) error {
 	return f.file.Truncate(int64(HeaderLength) + int64(f.blockZero.DiskBlockSize)*blockNo)
 }
 
-func (f *File) Stat() (*SeofFileInfo, error) {
+func (f *File) Stat() (*FileInfo, error) {
 	f.mutex.Lock()
 	defer f.mutex.Unlock()
 	stats, err := f.file.Stat()
@@ -574,7 +574,7 @@ func (f *File) Stat() (*SeofFileInfo, error) {
 		return nil, err
 	}
 
-	return &SeofFileInfo{
+	return &FileInfo{
 		name:          f.Name(),
 		size:          int64(f.blockZero.BEncFileSize),
 		eSize:         stats.Size(),
@@ -591,7 +591,7 @@ func (f *File) Stat() (*SeofFileInfo, error) {
 	}, nil
 }
 
-type SeofFileInfo struct {
+type FileInfo struct {
 	name          string
 	size          int64
 	eSize         int64
@@ -607,37 +607,37 @@ type SeofFileInfo struct {
 	scryptP       uint32
 }
 
-func (s SeofFileInfo) Name() string {
+func (s FileInfo) Name() string {
 	return s.name
 }
-func (s SeofFileInfo) Size() int64 {
+func (s FileInfo) Size() int64 {
 	return s.size
 }
-func (s SeofFileInfo) EncryptedSize() int64 {
+func (s FileInfo) EncryptedSize() int64 {
 	return s.eSize
 }
-func (s SeofFileInfo) Mode() os.FileMode {
+func (s FileInfo) Mode() os.FileMode {
 	return s.mode
 }
-func (s SeofFileInfo) ModTime() time.Time {
+func (s FileInfo) ModTime() time.Time {
 	return s.time
 }
-func (_ SeofFileInfo) IsDir() bool {
+func (_ FileInfo) IsDir() bool {
 	return false
 }
-func (s SeofFileInfo) Sys() interface{} {
+func (s FileInfo) Sys() interface{} {
 	return s.sys
 }
-func (s SeofFileInfo) DiskBlockSize() uint32 {
+func (s FileInfo) DiskBlockSize() uint32 {
 	return s.diskBlockSize
 }
-func (s SeofFileInfo) BEBlockSize() uint32 {
+func (s FileInfo) BEBlockSize() uint32 {
 	return s.bEncBlockSize
 }
-func (s SeofFileInfo) BlocksWritten() uint64 {
+func (s FileInfo) BlocksWritten() uint64 {
 	return s.blocksWritten
 }
-func (s SeofFileInfo) SCryptParameters() (salt []byte, N, R, P uint32) {
+func (s FileInfo) SCryptParameters() (salt []byte, N, R, P uint32) {
 	return s.scryptSalt, s.scryptN, s.scryptR, s.scryptP
 }
 

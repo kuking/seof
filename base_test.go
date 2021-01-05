@@ -264,13 +264,17 @@ func TestFile_Truncate(t *testing.T) {
 	}
 
 	stats, err := tempFile.Stat()
+	assertNoErr(err, t)
+	if stats == nil {
+		t.Fatal()
+	}
 	exp := int64(HeaderLength) + int64(5*f.blockZero.DiskBlockSize) // 4+1=5 because block-zero
 	if stats.Size() != exp {
 		t.Fatal("seems it did not truncate at the right place", stats.Size(), "!=", exp)
 	}
 
 	big := make([]byte, BEBlockSize*10)
-	f.Seek(0, 0)
+	_, _ = f.Seek(0, 0)
 	n, err := f.Read(big)
 	assertNoErr(err, t)
 	if n != 4*BEBlockSize {
@@ -280,7 +284,7 @@ func TestFile_Truncate(t *testing.T) {
 	// Cut half-way block
 	newLength := BEBlockSize + BEBlockSize/2
 	err = f.Truncate(int64(newLength))
-	f.Seek(0, 0)
+	_, _ = f.Seek(0, 0)
 	n, err = f.Read(big)
 	assertNoErr(err, t)
 	if n != newLength {
@@ -288,8 +292,13 @@ func TestFile_Truncate(t *testing.T) {
 	}
 
 	// for sure, after closing the file ... no buffers left hanging
-	f.Close()
+	err = f.Close()
+	assertNoErr(err, t)
 	stats, err = tempFile.Stat()
+	assertNoErr(err, t)
+	if stats == nil {
+		t.Fatal()
+	}
 	if stats.Size() != int64(HeaderLength)+int64(3*f.blockZero.DiskBlockSize) { // +1 for blockzero
 		t.Fatal("seems it did not truncate at the right place")
 	}
@@ -414,11 +423,11 @@ func TestOpenExt_InvalidHeader(t *testing.T) {
 	}
 	f, err := os.Create(tempFile.Name())
 	assertNoErr(err, t)
-	binary.Write(f, binary.LittleEndian, header)
-	f.Close()
+	assertNoErr(binary.Write(f, binary.LittleEndian, header), t)
+	assertNoErr(f.Close(), t)
 
 	_, err = OpenExt(tempFile.Name(), password, 1)
-	if err.Error() != "header: invalid disk_block_size" {
+	if err != nil && err.Error() != "header: invalid disk_block_size" {
 		t.Fatal()
 	}
 }
@@ -439,8 +448,8 @@ func TestOpenExt_ValidHeader_TruncatedFile(t *testing.T) {
 	header.ScriptSalt[0] = 1
 	f, err := os.Create(tempFile.Name())
 	assertNoErr(err, t)
-	binary.Write(f, binary.LittleEndian, header)
-	f.Close()
+	assertNoErr(binary.Write(f, binary.LittleEndian, header), t)
+	assertNoErr(f.Close(), t)
 
 	_, err = OpenExt(tempFile.Name(), password, 1)
 	if err != io.EOF {

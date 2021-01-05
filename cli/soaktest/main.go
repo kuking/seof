@@ -350,13 +350,13 @@ func assertErr(err error, desc string) {
 		if err != nil {
 			fmt.Println(err)
 		}
-		os.Remove(nat.Name())
+		_ = os.Remove(nat.Name())
 
 		err = enc.Close()
 		if err != nil {
 			fmt.Println(err)
 		}
-		os.Remove(enc.Name())
+		_ = os.Remove(enc.Name())
 
 		os.Exit(-1)
 	}

@@ -68,10 +68,10 @@ func main() {
 
 	entropy := pwe.FairEntropy(password)
 	if entropy < 96 {
-		os.Stderr.WriteString(fmt.Sprintf("FATAL: Est. entropy for provided password is not enough: %2.2f (minimum: 96)\n\n", entropy))
+		_, _ = os.Stderr.WriteString(fmt.Sprintf("FATAL: Est. entropy for provided password is not enough: %2.2f (minimum: 96)\n\n", entropy))
 		password = pwe.PwGen(pwe.FormatEasy, pwe.Strength256)
 		entropy = pwe.FairEntropy(password)
-		os.Stderr.WriteString(fmt.Sprintf("We have created a password for you with %2.2f bits of entropy \n"+
+		_, _ = os.Stderr.WriteString(fmt.Sprintf("We have created a password for you with %2.2f bits of entropy \n"+
 			"+-------------------------------------------------------+\n"+
 			"| %52v  |\n"+
 			"+-------------------------------------------------------+\n", entropy, password))
