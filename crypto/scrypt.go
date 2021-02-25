@@ -14,19 +14,19 @@ type SCryptParameters struct {
 
 var RecommendedSCryptParameters = SCryptParameters{ //>600ms
 	N: 1 << 16,
-	R: 1 << 5,
+	R: 1 << 6,
 	P: 1 << 0,
 }
 
 var BetterSCryptParameters = SCryptParameters{ //>5s
 	N: 1 << 18,
-	R: 1 << 6,
+	R: 1 << 7,
 	P: 1 << 0,
 }
 
-var MaxSCryptParameters = SCryptParameters{ //>9s
-	N: 1 << 19,
-	R: 1 << 6,
+var MaxSCryptParameters = SCryptParameters{ //>15s
+	N: 1 << 18,
+	R: 1 << 8,
 	P: 1 << 0,
 }
 
