@@ -11,7 +11,7 @@ truncate, seek, stats, etc. i.e. [`Read`](https://golang.org/pkg/os/#File.Read),
 
 It derives a file-wide key using [scrypt](http://www.tarsnap.com/scrypt.html) with a provided string password, the file
 is sliced into blocks of n bytes (decided at creation time.). Each block is encrypted and sealed using three AES256/GCM
-envelops, one inside the other, with three different nonces achieving
+envelops, one inside the other, with three different keys and nonces achieving
 both [confidentiality and authenticity](https://en.wikipedia.org/wiki/Authenticated_encryption). File wide integrity is
 warrantied by signing blocks and avoiding empty sparse blocks.
 
