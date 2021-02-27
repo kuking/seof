@@ -1,7 +1,7 @@
 # go seof: Simple Encrypted os.File
 
-Encrypted drop-in replacement of golang' [`os.File`](https://golang.org/pkg/os/#File), the file stored will have 768
-bits of encryption (Triple AES256 -yes- very silly and very secure). The resulting type can be used anywhere
+Encrypted drop-in replacement of golang' [`os.File`](https://golang.org/pkg/os/#File), the file stored will be encrypted
+using three passes of AES256 (other ciphers/parameters to come). The resulting type can be used anywhere
 an [`os.File`](https://golang.org/pkg/os/#File) could be used. i.e. it can be both sequentially and randomly read and
 write, at any file position for any amount of bytes, can be truncate, seek, stats, etc.
 i.e. [`Read`](https://golang.org/pkg/os/#File.Read),
@@ -312,3 +312,4 @@ TODO
 ----
 
 - Flag to allow reading empty holes in sparse files as no errors
+- Crypto analysis
