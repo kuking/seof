@@ -24,12 +24,13 @@ import (
 // written to get a better chance of capturing two equal nonce.
 
 func main() {
-	const prec = 1000   // bits
+	const prec = 5000   // bits
 	const bits = 12 * 8 // the first nonce for the first AES256
 	const n = 1_000_000_000_000
 
-	days := big.NewFloat(math.Pow(2, bits))
+	days := new(big.Float).SetPrec(prec).SetFloat64(math.Pow(2, bits))
 
+	fmt.Printf("Precision: %v mantissa bits\n", prec)
 	fmt.Printf("Days: %.0f\n", days)
 	fmt.Printf("N: %v\n", n)
 
@@ -48,5 +49,4 @@ func main() {
 			fmt.Printf("%vM, %.200f\n", i/1000/1000, p)
 		}
 	}
-	fmt.Printf("%.100f\n", p)
 }
