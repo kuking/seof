@@ -1,18 +1,17 @@
 # go seof: Simple Encrypted os.File
 
-Encrypted drop-in replacement of golang' [`os.File`](https://golang.org/pkg/os/#File), the file stored will be encrypted
-using three passes of AES256 (other ciphers/parameters to come). The resulting type can be used anywhere
-an [`os.File`](https://golang.org/pkg/os/#File) could be used. i.e. it can be both sequentially and randomly read and
-write, at any file position for any amount of bytes, can be truncate, seek, stats, etc.
-i.e. [`Read`](https://golang.org/pkg/os/#File.Read),
+Encrypted drop-in replacement of golang' [`os.File`](https://golang.org/pkg/os/#File), the file stored in disk will be
+encrypted, and the resulting type can be used anywhere an [`os.File`](https://golang.org/pkg/os/#File) could be used.
+i.e. it can be both sequentially and randomly read and write, at any file position for any amount of bytes, can be
+truncate, seek, stats, etc. i.e. [`Read`](https://golang.org/pkg/os/#File.Read),
 [`ReadAt`](https://golang.org/pkg/os/#File.ReadAt),
 [`WriteAt`](https://golang.org/pkg/os/#File.WriteAt),
 [`Seek`](https://golang.org/pkg/os/#File.Seek),
 [`Truncate`](https://golang.org/pkg/os/#File.Truncate), etc.
 
 It derives a file-wide key using [scrypt](http://www.tarsnap.com/scrypt.html) with a provided string password, the file
-is sliced into blocks of n bytes (decided at creation time.). Each block is encrypted and sealed using three AES256/CGM
-envelops, one inside the other, achieving
+is sliced into blocks of n bytes (decided at creation time.). Each block is encrypted and sealed using three AES256/GCM
+envelops, one inside the other, with three different nonces achieving
 both [confidentiality and authenticity](https://en.wikipedia.org/wiki/Authenticated_encryption). File wide integrity is
 warrantied by signing blocks and avoiding empty sparse blocks.
 
@@ -294,6 +293,10 @@ Attack vectors
   allowing a "selective block zero-ing attack." and failing the integrity assurances.
 
   If you really need this assurance, let me know, the block-written-bitmap can be done.
+
+- Possible birthday paradox attack. So far this seems to be a pure theoretical attack given the nonce-size used (288
+  bits); nonces are randomly generated only on block flushes; more details in the
+  ticket [here](https://github.com/kuking/seof/issues/1).
 
 USAGE
 -----
