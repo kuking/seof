@@ -299,7 +299,7 @@ Attack vectors
   the [calculator](https://github.com/kuking/seof/blob/master/cli/birthday/main.go). Long story short, with triple-AES
   is practically impossible, with single AES the chance is 1 in a billion after writing 37TiB in one single file. If you
   are worried about those odds, create multiple files, password can be reused as the scrypt will be initialised with
-  different salts.
+  different salts. To put this number in perspective, the average write-life expectancy for a modern SSD disk is 500TiB.
 
 USAGE
 -----
