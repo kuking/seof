@@ -294,9 +294,12 @@ Attack vectors
 
   If you really need this assurance, let me know, the block-written-bitmap can be done.
 
-- Possible birthday paradox attack. So far this seems to be a pure theoretical attack given the nonce-size used (288
-  bits); nonces are randomly generated only on block flushes; more details in the
-  ticket [here](https://github.com/kuking/seof/issues/1).
+- Nonces are randomly created, we have calculated the odds of duplicating a nonce, see the details in the
+  ticket [here](https://github.com/kuking/seof/issues/1) and
+  the [calculator](https://github.com/kuking/seof/blob/master/cli/birthday/main.go). Long story short, with triple-AES
+  is practically impossible, with single AES the chance is 1 in a billion after writing 37TiB in one single file. If you
+  are worried about those odds, create multiple files, password can be reused as the scrypt will be initialised with
+  different salts.
 
 USAGE
 -----
