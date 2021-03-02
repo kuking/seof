@@ -264,20 +264,31 @@ operations on the same seof File object from multiple concurrent goroutines.
 Attack vectors
 --------------
 
-- Each time a new block is written, a new nonce is generated, less than 2^32 write operations should be done in one
-  particular file (and key.). Internally the implementation uses buffers and will store to disk only when the buffer
-  needs to be flushed to disk (i.e. file closed, sync or cache eviction.)
-  if your application does a lots of random seeks and writes (constantly invalidating the blocks cache, forcing flushing
-  blocks to disk, generating new nonces for the new encrypted block) you might hit this upper limit. Special block 0
-  holds a counter with the number of unique nonces ever generated (which equals to the number of written and encrypted
-  blocks). This value can be inspected using the `seof -i` CLI command.
+- Each time a block is written, a new **random** nonce is generated. Internally, the implementation uses buffers and
+  will write to disk only when the buffer needs to be flushed (file closed, sync or cache eviction.). It is a
+  requirement for GCM to never reuse a nonce, or the key can be compromised. We have calculated the odds of duplicating
+  a nonce (consisting of 12 bytes of randomness), see the details in the
+  ticket [here](https://github.com/kuking/seof/issues/1) and
+  the [calculator](https://github.com/kuking/seof/blob/master/cli/birthday/main.go). Long story short, with triple-AES
+  is practically impossible, with single AES, the chance is 1 in a billion after writing 37TiB into one single file. If
+  you are worried about those odds, create multiple smaller files, the password can be reused as the scrypt will be
+  initialised with different salts in each file. To put this number in perspective, the average write-life expectancy
+  for a modern SSD disk is 500TiB. Finally, special block 0 holds a counter with the number of unique nonces ever
+  generated. This value can be inspected using the `seof -i` CLI command or via the `Stats` function.
 
 - The weakest encryption-link is the password string used for generating the 768 bits (96 bytes) of key. A string in
   latin characters should have to be approx. 150 characters in order to hold 768 bits of entropy. You have to keep that
   in mind.
 
-- Blocks within the same file can not be shuffled or moved to another block as the AEAD seals hold the block number in
-  the signed plaintext. This is verified.
+- Blocks within the same file can not be shuffled or moved to another block (or even another file) as the AEAD seals
+  hold the block number in the signed plaintext. This is verified.
+
+- Replacing a ciphertext block with a previous copy of the same block will not be detected. Like replacing the whole
+  encrypted file with a previous version of itself. For the user this will experienced as if the file as lost written
+  data (as the previously stored data would come back). An attacker has to have read/write access to the filesystem, but
+  will not be able to generate new arbitrary plaintext. It is possible to prevent this attack, at both performance cost
+  and higher risk of corrupting the file on failure scenarios (i.e. block is flushed, but reference to block
+  high-water-mark is lost).
 
 - Most filesystems can handle [sparse files](https://en.wikipedia.org/wiki/Sparse_file). seof supports sparse files, but
   read of never written/zeroed blocks is disabled by default to avoid a possible attack (see: XXX flag). User can create
@@ -293,13 +304,6 @@ Attack vectors
   allowing a "selective block zero-ing attack." and failing the integrity assurances.
 
   If you really need this assurance, let me know, the block-written-bitmap can be done.
-
-- Nonces are randomly created, we have calculated the odds of duplicating a nonce, see the details in the
-  ticket [here](https://github.com/kuking/seof/issues/1) and
-  the [calculator](https://github.com/kuking/seof/blob/master/cli/birthday/main.go). Long story short, with triple-AES
-  is practically impossible, with single AES the chance is 1 in a billion after writing 37TiB in one single file. If you
-  are worried about those odds, create multiple files, password can be reused as the scrypt will be initialised with
-  different salts. To put this number in perspective, the average write-life expectancy for a modern SSD disk is 500TiB.
 
 USAGE
 -----

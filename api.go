@@ -184,6 +184,9 @@ func (f *File) getOrLoadBlock(blockNo int64) (*inMemoryBlock, error) {
 func (f *File) seal(plainText []byte, blockNo uint64) (cipherText []byte, nonce []byte) {
 	additional := make([]byte, 8)
 	binary.LittleEndian.PutUint64(additional, blockNo)
+	if f.aead[0].NonceSize() * 3 != nonceSize {
+		panic("unexpected nonce size")
+	}
 	nonce = crypto.RandBytes(nonceSize)
 	cipherText = f.aead[0].Seal(nil, nonce[0:12], plainText, additional)
 	cipherText = f.aead[1].Seal(nil, nonce[12:24], cipherText, additional)
