@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+
 	"github.com/kuking/seof/crypto"
 )
 

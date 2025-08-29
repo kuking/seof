@@ -5,21 +5,22 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
-	"github.com/kuking/seof/crypto"
 	"io"
 	"io/ioutil"
 	"os"
 	"testing"
+
+	"github.com/kuking/seof/crypto"
 )
 
 func Test_HappySequentialWriteRead(t *testing.T) {
-	tempFile, _ := ioutil.TempFile(os.TempDir(), "lala")
+	tempFile, _ := os.CreateTemp(os.TempDir(), "lala")
 	defer deferredCleanup(tempFile)
 
 	data := crypto.RandBytes(BEBlockSize*3 + BEBlockSize/3)
 
 	// create, write, close.
-	f, err := CreateExt(tempFile.Name(), password, crypto.MinSCryptParameters, BEBlockSize, 1)
+	f, err := CreateExt(tempFile.Name(), []byte(password), crypto.MinSCryptParameters, BEBlockSize, 1)
 	assertNoErr(err, t)
 	n, err := f.Write(data)
 	assertNoErr(err, t)
@@ -30,7 +31,7 @@ func Test_HappySequentialWriteRead(t *testing.T) {
 	assertNoErr(err, t)
 
 	// open, read, close.
-	f, err = OpenExt(tempFile.Name(), password, 1)
+	f, err = OpenExt(tempFile.Name(), []byte(password), 1)
 	assertNoErr(err, t)
 	readBuf := make([]byte, BEBlockSize*5) // bigger, purposely
 	n, err = f.Read(readBuf)
@@ -50,7 +51,7 @@ func Test_NoPlainTextInDisk(t *testing.T) {
 	defer deferredCleanup(tempFile)
 
 	data := crypto.RandBytes(128)
-	f, _ := CreateExt(tempFile.Name(), password, crypto.MinSCryptParameters, BEBlockSize, 1)
+	f, _ := CreateExt(tempFile.Name(), []byte(password), crypto.MinSCryptParameters, BEBlockSize, 1)
 	for i := 0; i < 100; i++ {
 		_, _ = f.Write(data)
 	}
@@ -70,7 +71,7 @@ func Test_ChunkedBigWrite(t *testing.T) {
 	data := crypto.RandBytes(256)
 
 	// create, write, close.
-	f, _ := CreateExt(tempFile.Name(), password, crypto.MinSCryptParameters, BEBlockSize, 1)
+	f, _ := CreateExt(tempFile.Name(), []byte(password), crypto.MinSCryptParameters, BEBlockSize, 1)
 
 	for i := 0; i < 20; i++ {
 		_, _ = f.Write(data)
@@ -78,7 +79,7 @@ func Test_ChunkedBigWrite(t *testing.T) {
 	_ = f.Close()
 
 	// open, read, close.
-	f, _ = OpenExt(tempFile.Name(), password, 1)
+	f, _ = OpenExt(tempFile.Name(), []byte(password), 1)
 	readBuf := make([]byte, 256*20) // the whole thing should fit
 	n, err := f.Read(readBuf)
 	assertNoErr(err, t)
@@ -100,7 +101,7 @@ func Test_AnythingOnClosedFileFails(t *testing.T) {
 	tempFile, _ := ioutil.TempFile(os.TempDir(), "lala")
 	defer deferredCleanup(tempFile)
 
-	f, err := CreateExt(tempFile.Name(), password, crypto.MinSCryptParameters, BEBlockSize, 1)
+	f, err := CreateExt(tempFile.Name(), []byte(password), crypto.MinSCryptParameters, BEBlockSize, 1)
 	assertNoErr(err, t)
 
 	err = f.Close()
@@ -150,7 +151,7 @@ func Test_ClosingAnErroredSoefIsOK(t *testing.T) {
 	tempFile, _ := ioutil.TempFile(os.TempDir(), "lala")
 	defer deferredCleanup(tempFile)
 
-	f, err := CreateExt(tempFile.Name(), password, crypto.MinSCryptParameters, BEBlockSize, 1)
+	f, err := CreateExt(tempFile.Name(), []byte(password), crypto.MinSCryptParameters, BEBlockSize, 1)
 	assertNoErr(err, t)
 	for i := 0; i < 1024; i++ { // so it is bigger than 1 buffer
 		_, err = f.WriteString("HELLO")
@@ -176,7 +177,7 @@ func Test_ClosingAnErroredSoefIsOK(t *testing.T) {
 func TestFile_Name(t *testing.T) {
 	tempFile, _ := ioutil.TempFile(os.TempDir(), "lala")
 	defer deferredCleanup(tempFile)
-	f, _ := CreateExt(tempFile.Name(), password, crypto.MinSCryptParameters, BEBlockSize, 1)
+	f, _ := CreateExt(tempFile.Name(), []byte(password), crypto.MinSCryptParameters, BEBlockSize, 1)
 
 	if f.Name() != tempFile.Name() {
 		t.Fatal()
@@ -188,7 +189,7 @@ func TestFile_Seek(t *testing.T) {
 	tempFile, _ := ioutil.TempFile(os.TempDir(), "lala")
 	defer deferredCleanup(tempFile)
 
-	f, err := CreateExt(tempFile.Name(), password, crypto.MinSCryptParameters, BEBlockSize, 10) // 10 is important to buffers are left in memory
+	f, err := CreateExt(tempFile.Name(), []byte(password), crypto.MinSCryptParameters, BEBlockSize, 10) // 10 is important to buffers are left in memory
 	assertNoErr(err, t)
 	for i := 0; i < 1024; i++ { // so it is bigger than 1 buffer
 		_, err = f.WriteString("HELLO")
@@ -238,7 +239,7 @@ func TestFile_Truncate(t *testing.T) {
 	tempFile, _ := ioutil.TempFile(os.TempDir(), "lala")
 	defer deferredCleanup(tempFile)
 
-	f, err := CreateExt(tempFile.Name(), password, crypto.MinSCryptParameters, BEBlockSize, 10) // 10 is important to buffers are left in memory
+	f, err := CreateExt(tempFile.Name(), []byte(password), crypto.MinSCryptParameters, BEBlockSize, 10) // 10 is important to buffers are left in memory
 	assertNoErr(err, t)
 	for i := 0; i < 1024; i++ { // so it is bigger than 1 buffer
 		_, err = f.WriteString("HELLO")
@@ -308,7 +309,7 @@ func TestFile_SparseFile(t *testing.T) {
 	tempFile, _ := ioutil.TempFile(os.TempDir(), "lala")
 	defer deferredCleanup(tempFile)
 
-	f, err := CreateExt(tempFile.Name(), password, crypto.MinSCryptParameters, BEBlockSize, 10) // 10 is important to buffers are left in memory
+	f, err := CreateExt(tempFile.Name(), []byte(password), crypto.MinSCryptParameters, BEBlockSize, 10) // 10 is important to buffers are left in memory
 	assertNoErr(err, t)
 
 	// seeking far away, reading and writting ... works
@@ -355,7 +356,7 @@ func TestFile_Stat(t *testing.T) {
 	tempFile, _ := ioutil.TempFile(os.TempDir(), "lala")
 	defer deferredCleanup(tempFile)
 
-	f, err := CreateExt(tempFile.Name(), password, crypto.MinSCryptParameters, BEBlockSize, 10) // 10 is important to buffers are left in memory
+	f, err := CreateExt(tempFile.Name(), []byte(password), crypto.MinSCryptParameters, BEBlockSize, 10) // 10 is important to buffers are left in memory
 	assertNoErr(err, t)
 	for i := 0; i < 1024; i++ { // so it is bigger than 1 buffer
 		_, err = f.WriteString("HELLO")
@@ -402,7 +403,7 @@ func TestOpenExt_EmptyFile(t *testing.T) {
 	assertNoErr(err, t)
 	assertNoErr(f.Close(), t)
 
-	_, err = OpenExt(tempFile.Name(), password, 1)
+	_, err = OpenExt(tempFile.Name(), []byte(password), 1)
 	if err != io.EOF {
 		t.Fatal()
 	}
@@ -426,7 +427,7 @@ func TestOpenExt_InvalidHeader(t *testing.T) {
 	assertNoErr(binary.Write(f, binary.LittleEndian, header), t)
 	assertNoErr(f.Close(), t)
 
-	_, err = OpenExt(tempFile.Name(), password, 1)
+	_, err = OpenExt(tempFile.Name(), []byte(password), 1)
 	if err != nil && err.Error() != "header: invalid disk_block_size" {
 		t.Fatal()
 	}
@@ -451,7 +452,7 @@ func TestOpenExt_ValidHeader_TruncatedFile(t *testing.T) {
 	assertNoErr(binary.Write(f, binary.LittleEndian, header), t)
 	assertNoErr(f.Close(), t)
 
-	_, err = OpenExt(tempFile.Name(), password, 1)
+	_, err = OpenExt(tempFile.Name(), []byte(password), 1)
 	if err != io.EOF {
 		t.Fatal()
 	}

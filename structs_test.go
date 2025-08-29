@@ -3,8 +3,9 @@ package seof
 import (
 	"bytes"
 	"encoding/binary"
-	"github.com/kuking/seof/crypto"
 	"testing"
+
+	"github.com/kuking/seof/crypto"
 )
 
 func TestHeaderStruct(t *testing.T) {

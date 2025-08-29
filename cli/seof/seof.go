@@ -4,12 +4,12 @@ import (
 	"encoding/hex"
 	"flag"
 	"fmt"
+	"io"
+	"os"
+
 	pwe "github.com/kuking/go-pwentropy"
 	"github.com/kuking/seof"
 	"github.com/kuking/seof/crypto"
-	"io"
-	"io/ioutil"
-	"os"
 )
 
 var doEncrypt bool
@@ -60,17 +60,17 @@ func main() {
 	if len(passwordFile) > 1 && passwordFile[0] == '@' {
 		passwordFile = passwordFile[1:]
 	}
-	passwordBytes, err := ioutil.ReadFile(passwordFile)
+
+	password, err := os.ReadFile(passwordFile)
 	if err != nil {
 		panic(err)
 	}
-	password := string(passwordBytes)
 
-	entropy := pwe.FairEntropy(password)
+	entropy := pwe.FairEntropy(string(password))
 	if entropy < 96 {
 		_, _ = os.Stderr.WriteString(fmt.Sprintf("FATAL: Est. entropy for provided password is not enough: %2.2f (minimum: 96)\n\n", entropy))
-		password = pwe.PwGen(pwe.FormatEasy, pwe.Strength256)
-		entropy = pwe.FairEntropy(password)
+		password = []byte(pwe.PwGen(pwe.FormatEasy, pwe.Strength256))
+		entropy = pwe.FairEntropy(string(password))
 		_, _ = os.Stderr.WriteString(fmt.Sprintf("We have created a password for you with %2.2f bits of entropy \n"+
 			"+-------------------------------------------------------+\n"+
 			"| %52v  |\n"+

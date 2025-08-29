@@ -4,11 +4,12 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
-	"github.com/kuking/seof"
-	"github.com/kuking/seof/crypto"
 	"math/rand"
 	"os"
 	"runtime"
+
+	"github.com/kuking/seof"
+	"github.com/kuking/seof/crypto"
 )
 
 var password = "e924a81d0abd80b4c2ded664c7881a75575d9e45"
@@ -49,7 +50,7 @@ func main() {
 	fmt.Printf("1. Creating 2 x %vMB files: native.soak, seof.soak\n", wholeSize/1024/1024)
 	nat, err = os.Create("native.soak")
 	assertErr(err, "creating native.soak")
-	enc, err = seof.CreateExt("seof.soak", password, crypto.RecommendedSCryptParameters, seofBlockSize, 5)
+	enc, err = seof.CreateExt("seof.soak", []byte(password), crypto.RecommendedSCryptParameters, seofBlockSize, 5)
 	assertErr(err, "creating seof.soak")
 
 	fmt.Printf("2. Writing %vMB of [0x00, 0x01, 0x02, ... 0xff] in: native.soak, seof.soak\n", wholeSize/1024/1024)

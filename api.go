@@ -6,13 +6,14 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	lru "github.com/hashicorp/golang-lru"
-	"github.com/kuking/seof/crypto"
-	"golang.org/x/crypto/scrypt"
 	"io"
 	"os"
 	"sync"
 	"time"
+
+	lru "github.com/hashicorp/golang-lru"
+	"github.com/kuking/seof/crypto"
+	"golang.org/x/crypto/scrypt"
 )
 
 const nonceSize int = 36
@@ -33,13 +34,13 @@ type inMemoryBlock struct {
 	plainText []byte
 }
 
-func (f *File) initialiseCiphers(password string, header *Header) error {
+func (f *File) initialiseCiphers(password []byte, header *Header) error {
 	err := header.Verify()
 	if err != nil {
 		return err
 	}
 	var key []byte
-	key, err = scrypt.Key([]byte(password), header.ScriptSalt[:], int(header.ScriptN), int(header.ScriptR), int(header.ScriptP), 96)
+	key, err = scrypt.Key(password, header.ScriptSalt[:], int(header.ScriptN), int(header.ScriptR), int(header.ScriptP), 96)
 	if err != nil {
 		return err
 	}
@@ -184,7 +185,7 @@ func (f *File) getOrLoadBlock(blockNo int64) (*inMemoryBlock, error) {
 func (f *File) seal(plainText []byte, blockNo uint64) (cipherText []byte, nonce []byte) {
 	additional := make([]byte, 8)
 	binary.LittleEndian.PutUint64(additional, blockNo)
-	if f.aead[0].NonceSize() * 3 != nonceSize {
+	if f.aead[0].NonceSize()*3 != nonceSize {
 		panic("unexpected nonce size")
 	}
 	nonce = crypto.RandBytes(nonceSize)
@@ -222,7 +223,7 @@ func OpenFile(_ string, _ int, _ os.FileMode) (*File, error) {
 	return nil, errors.New("use OpenExt")
 }
 
-func OpenExt(name string, password string, memoryBuffers int) (*File, error) {
+func OpenExt(name string, password []byte, memoryBuffers int) (*File, error) {
 	if memoryBuffers < 1 || memoryBuffers > 1024 {
 		return nil, errors.New("memory buffers can be between 1 and 1024")
 	}
@@ -269,9 +270,9 @@ func OpenExt(name string, password string, memoryBuffers int) (*File, error) {
 	return &file, nil
 }
 
-func CreateExt(name string, password string, scryptParams crypto.SCryptParameters, BEBlockSize int, memoryBuffers int) (*File, error) {
-	if len(password) < 20 {
-		return nil, errors.New("password should be at least 20 characters long")
+func CreateExt(name string, password []byte, scryptParams crypto.SCryptParameters, BEBlockSize int, memoryBuffers int) (*File, error) {
+	if len(password) < 12 {
+		return nil, errors.New("password should be at least 12 characters long")
 	}
 	if BEBlockSize < 1024 || BEBlockSize > 128*1024 {
 		return nil, errors.New("before encryption block size has to be between 1KB and 128KB")
