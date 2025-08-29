@@ -34,6 +34,12 @@ type inMemoryBlock struct {
 	plainText []byte
 }
 
+func (i *inMemoryBlock) Reset() {
+	i.modified = false
+	for x := 0; x < len(i.plainText); x++ {
+		i.plainText[x] = 0 // maybe use MemGuard.Wipe()
+	}
+}
 func (f *File) initialiseCiphers(password []byte, header *Header) error {
 	err := header.Verify()
 	if err != nil {
@@ -68,6 +74,7 @@ func (f *File) initialiseCache(size int) error {
 func (f *File) flushBlock(blockI interface{}, dataI interface{}) {
 	blockNo := blockI.(int64)
 	imb := dataI.(*inMemoryBlock)
+	defer imb.Reset()
 	if !imb.modified {
 		return
 	}
